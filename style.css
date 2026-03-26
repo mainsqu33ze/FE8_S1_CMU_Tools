@@ -1,0 +1,74 @@
+/* Clean, accessible defaults */
+:root {
+    --primary: #2563eb;
+    --bg: #f8fafc;
+    --text: #1e293b;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    margin: 0;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+/* The Grid: 1 column on mobile, 3 on desktop */
+.tool-grid {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* Interactive Cards */
+.tool-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    border: 2px solid transparent;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, border-color 0.2s;
+    display: block;
+}
+
+/* Accessibility: Clear focus states and large tap targets */
+.tool-card:hover, .tool-card:focus {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    outline: none;
+}
+
+.tool-card h2 {
+    margin-top: 0;
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.tool-card p {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+    body {
+        padding: 1rem;
+    }
+    
+    header {
+        margin-bottom: 1.5rem;
+    }
+}
