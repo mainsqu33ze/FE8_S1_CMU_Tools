@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mainsqu33ze CMU Pro Randomizer - Wide View</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; display: flex; justify-content: center; }
+        
+        /* Increased width to accommodate side-by-side view */
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 850px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        h1 { color: #00d4ff; text-align: center; font-size: 1.5em; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; }
+        
+        /* Flex container for the buttons */
+        .button-group { display: flex; gap: 10px; margin: 10px 0; }
+        select, button { padding: 12px; border-radius: 8px; border: none; font-size: 1rem; }
+        select { background: #2a2a2a; color: white; cursor: pointer; flex: 2; }
+        
+        .btn-gen { background: linear-gradient(135deg, #00d4ff, #005f7a); color: white; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-print { background: #444; color: white; font-weight: bold; cursor: pointer; flex: 1; display: none; } /* Hidden until first gen */
+        
+        button:hover { transform: scale(1.01); filter: brightness(1.1); }
+
+        #output { margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; display: none; }
+        
+        /* Layout for side-by-side stats */
+        .stats-grid { display: flex; gap: 25px; margin-bottom: 20px; }
+        .stat-column { flex: 1; }
+
+        .stat-line { display: flex; justify-content: space-between; background: #252525; margin: 4px 0; padding: 8px; border-radius: 4px; border-left: 3px solid #00d4ff; }
+        
+        .skill-container { margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
+        .skill-tag { display: inline-block; background: #005f7a; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; margin: 4px; border: 1px solid #00d4ff; }
+        
+        .label { color: #00d4ff; font-weight: bold; text-transform: uppercase; font-size: 0.8em; display: block; margin-bottom: 10px; letter-spacing: 1px; }
+        #outHeader { font-size: 1.6em; font-weight: bold; color: #ffcc00; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Mainsqu33ze CMU RANDOMIZER</h1>
+    
+    <div class="button-group">
+        <select id="unitSelect"></select>
+        <button class="btn-gen" onclick="generate()">GENERATE</button>
+        <button id="printBtn" class="btn-print" onclick="downloadTxt()">PRINT TO .TXT</button>
+    </div>
+
+    <div id="output">
+        <div id="outHeader"></div>
+        <div id="outMeta" style="margin-bottom: 20px; color: #aaa; font-size: 1.1em;"></div>
+        
+        <div class="stats-grid">
+            <div class="stat-column">
+                <span class="label">Base Stats (SP Distributed)</span>
+                <div id="outStats"></div>
+            </div>
+            
+            <div class="stat-column">
+                <span class="label">Growth Rates (300% Total)</span>
+                <div id="outGrowths"></div>
+            </div>
+        </div>
+
+        <div class="skill-container">
+            <span class="label">Assigned Skills & Aptitude</span>
+            <div id="outSkills"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global declaration
+let lastGenerated = null;
+// (Your unitData and skillPool arrays remain the same as you had them)
+const unitData = [
+    { name: "Eirika", sp: 10, promoted: false }, { name: "Seth", sp: 18, promoted: true },
+    { name: "Franz", sp: 10, promoted: false }, { name: "Gilliam", sp: 12, promoted: false },
+    { name: "Moulder", sp: 11, promoted: false }, { name: "Vanessa", sp: 10, promoted: false },
+    { name: "Ross", sp: 10, promoted: false }, { name: "Garcia", sp: 12, promoted: false },
+    { name: "Neimi", sp: 10, promoted: false }, { name: "Colm", sp: 11, promoted: false },
+    { name: "Artur", sp: 10, promoted: false }, { name: "Lute", sp: 10, promoted: false },
+    { name: "Natasha", sp: 10, promoted: false }, { name: "Joshua", sp: 12, promoted: false },
+    { name: "Ephraim", sp: 12, promoted: false }, { name: "Kyle", sp: 12, promoted: false },
+    { name: "Ford", sp: 13, promoted: false },
+    { name: "Orson", sp: 19, promoted: true }, { name: "Tana", sp: 12, promoted: false },
+    { name: "Amelia", sp: 10, promoted: false }, { name: "Innes", sp: 18, promoted: true },
+    { name: "Gerik", sp: 15, promoted: false }, { name: "Tethys", sp: 10, promoted: false },
+    { name: "Marisa", sp: 12, promoted: false }, { name: "Cormag", sp: 14, promoted: false },
+    { name: "L'Arachel", sp: 11, promoted: false }, { name: "Dozla", sp: 18, promoted: true },
+    { name: "Saleh", sp: 18, promoted: true }, { name: "Ewan", sp: 10, promoted: false },
+    { name: "Rennac", sp: 18, promoted: true }, { name: "Duessel", sp: 21, promoted: true },
+    { name: "Knoll", sp: 15, promoted: false }, { name: "Myrrh", sp: 10, promoted: false },
+    { name: "Syrene", sp: 18, promoted: true }
+];
+
+const skillPool = [
+    { name: "Miracle", cost: 10 }, { name: "Astra", cost: 10 }, { name: "Aether", cost: 10 }, { name: "Acrobat", cost: 10 },
+    { name: "Colossus", cost: 10 }, { name: "Ignis", cost: 10 }, { name: "Paragon", cost: 10 }, { name: "Wrath", cost: 7 },
+    { name: "Desperation", cost: 7 }, { name: "Darting Stance", cost: 7 }, { name: "Resolve", cost: 7 }, { name: "Counter", cost: 7 },
+    { name: "Swordfaire", cost: 7 }, { name: "Lancefaire", cost: 7 }, { name: "Axefaire", cost: 7 }, { name: "Bowfaire", cost: 7 },
+    { name: "Tomefaire", cost: 7 }, { name: "Axefaith", cost: 7 }, { name: "Rightful King", cost: 7 }, { name: "Celerity", cost: 7 },
+    { name: "Dragon Fang", cost: 7 }, { name: "Vantage", cost: 5 }, { name: "Darting Blow", cost: 5 }, { name: "Death Blow", cost: 5 },
+    { name: "Seal Attack", cost: 5 }, { name: "Seal Speed", cost: 5 }, { name: "Seal Defense", cost: 5 }, { name: "Seal Resistance", cost: 5 },
+    { name: "Certain Blow", cost: 5 }, { name: "Vigilance", cost: 5 }, { name: "Crit Boost", cost: 5 }, { name: "Re-Move", cost: 5 },
+    { name: "Fortune", cost: 5 }, { name: "Hero", cost: 5 }, { name: "Breath of Life", cost: 5 }, { name: "Discipline+", cost: 5 },
+    { name: "Keep Up", cost: 5 }, { name: "Natural Cover", cost: 5 }, { name: "Elbow Room", cost: 5 }, { name: "Nature Rush", cost: 5 },
+    { name: "Discipline", cost: 3 }, { name: "Charisma", cost: 3 }, { name: "Fortress Defense", cost: 3 }, { name: "Fortress Resistance", cost: 3 },
+    { name: "Indoor Fighter", cost: 3 }, { name: "Outdoor Fighter", cost: 3 }, { name: "Shove", cost: 3 }, { name: "Swap", cost: 3 },
+    { name: "Canto", cost: 3 }, { name: "Glacies", cost: 3 }, { name: "Reposition", cost: 3 }, { name: "Pivot", cost: 3 },
+    { name: "Despoil", cost: 3 }, { name: "Bane", cost: 3 }, { name: "Black Magic", cost: 3 }, { name: "Skybreaker", cost: 3 },
+    { name: "Loyalty", cost: 3 }, { name: "Bond", cost: 3 }, { name: "Resourceful", cost: 3 }, { name: "Lunge", cost: 3 },
+    { name: "Adept", cost: 3 }, { name: "Bargain", cost: 2 }, { name: "Pass", cost: 2 }, { name: "Savior", cost: 2 },
+    { name: "Shade", cost: 2 }, { name: "Mercy", cost: 2 }, { name: "Demoiselle", cost: 2 }, { name: "Gentilhomme", cost: 2 },
+    { name: "Locktouch", cost: 2 }, { name: "Expertise", cost: 2 }, { name: "Gamble", cost: 2 }, { name: "Armsthrift", cost: 2 },
+    { name: "Corrosion", cost: 2 }, { name: "Watchful", cost: 2 }, { name: "Boon", cost: 2 }, { name: "Liquid Ooze", cost: 2 },
+    { name: "Full Metal Body", cost: 2 }, { name: "Shadowgift", cost: 2 }, { name: "Lumina", cost: 2 }, { name: "Fury", cost: 2 },
+    { name: "Enrage", cost: 2 }, { name: "Supply", cost: 2 }, { name: "Gridmaster", cost: 2 }, { name: "Live to Serve", cost: 2 },
+    { name: "Growth Investment 4", cost: 4 }, { name: "Growth Investment 3", cost: 3 }, { name: "Growth Investment 2", cost: 2 }, 
+    { name: "Growth Investment 1", cost: 1 }, { name: "Leadership 4", cost: 4 }, { name: "Leadership 2", cost: 2 }, 
+    { name: "Leadership 1", cost: 1 }, { name: "Provoke", cost: 2 }
+];
+
+const classesUnpromoted = [
+    "Lord(Ln)", "Lord(Sw)", "Dancer", "Soldier", "Cavalier", "Knight", "Mercenary", "Myrmidon", "Thief", "Archer",
+    "Wyvern Rider", "Mage", "Monk", "Priest", "Cleric", "Shaman", "Fighter", "Brigand", "Pirate", "Pegasus Knight",
+    "Troubadour", "Bonewalker(Sw/Ln)", "Bonewalker(Bow)", "Tarvos", "Gargoyle", "Mogall", "Phantom"
+];
+const classesPromoted = [
+    "Great Lord(Ln)", "Great Lord(Sw)", "Paladin", "Great Knight", "General", "Hero", "Swordmaster", "Assassin", 
+    "Rogue", "Sniper", "Ranger", "Wyvern Lord", "Wyvern Knight", "Sage", "Mage Knight", "Bishop", "Druid", "Summoner",
+    "Warrior", "Berserker", "Falcoknight", "Valkyrie", "Wight(Sw/Ln)", "Wight(Bow)", "Cyclops", "Maelduin", "Deathgoyle",
+    "Arch Mogall", "Living Armor"
+];
+const affinities = ["Fire", "Ice", "Wind", "Thunder", "Anima", "Light", "Dark"];
+
+const select = document.getElementById('unitSelect');
+unitData.forEach((u, index) => {
+    let opt = document.createElement('option');
+    opt.value = index;
+    opt.innerHTML = `${u.name} (SP: ${u.sp}${u.promoted ? ' - Promoted' : ''})`;
+    select.appendChild(opt);
+});
+
+function generate() {
+    const unit = unitData[document.getElementById('unitSelect').value];
+    const classPool = unit.promoted ? classesPromoted : classesUnpromoted;
+    const charClass = classPool[Math.floor(Math.random() * classPool.length)];
+    const affinity = affinities[Math.floor(Math.random() * affinities.length)];
+    const hasCanto = [
+        "Cavalier", "Pegasus Knight", "Wyvern Rider", "Paladin", "Falcoknight", "Wyvern Lord", "Ranger",
+        "Great Knight", "Mage Knight", "Troubadour", "Valkyrie", "Tarvos", "Maelduin", "Gargoyle", "Deathgoyle",
+        "Mogall", "Arch Mogall"
+    ].includes(charClass);
+
+    // 1. Distribute SP (Bases)
+    let bases = { HP:0, PWR:0, SKL:0, SPD:0, LCK:0, DEF:0, RES:0, CON:0 };
+    let statKeys = Object.keys(bases);
+    for(let i=0; i<unit.sp; i++) bases[statKeys[Math.floor(Math.random() * statKeys.length)]]++;
+
+    // 2. Distribute Growths (300% total, in 5% chunks)
+    let growths = { HP:0, PWR:0, SKL:0, SPD:0, LCK:0, DEF:0, RES:0 };
+    let growthKeys = Object.keys(growths);
+    for(let i=0; i < 60; i++) { // 60 iterations * 5% = 300%
+        growths[growthKeys[Math.floor(Math.random() * growthKeys.length)]] += 5;
+    }
+
+    // 3. Skills (10 AP)
+    let ap = 10;
+    let selectedSkills = hasCanto ? ["Canto (Free)"] : [];
+    let shuffledSkills = [...skillPool].sort(() => 0.5 - Math.random());
+    for(let s of shuffledSkills) {
+        if(ap >= s.cost && !selectedSkills.includes(s.name)) {
+            selectedSkills.push(`${s.name} (${s.cost} AP)`);
+            ap -= s.cost;
+        }
+    }
+
+    // Save to global variable for Print function
+    lastGenerated = { unit, charClass, affinity, bases, growths, selectedSkills, ap };
+
+    // DISPLAY LOGIC
+    document.getElementById('outHeader').innerText = `Replacement for ${unit.name}`;
+    document.getElementById('outMeta').innerText = `Class: ${charClass} | Affinity: ${affinity}`;
+    
+    // Output Bases
+    let baseHtml = "";
+    statKeys.forEach(k => baseHtml += `<div class="stat-line"><span>${k}</span><span>+${bases[k]}</span></div>`);
+    document.getElementById('outStats').innerHTML = baseHtml;
+
+    // Output Growths
+    let growthHtml = "";
+    growthKeys.forEach(k => growthHtml += `<div class="stat-line"><span>${k} Growth</span><span>${growths[k]}%</span></div>`);
+    document.getElementById('outGrowths').innerHTML = growthHtml;
+
+    // Output Skills
+    document.getElementById('outSkills').innerHTML = selectedSkills.map(s => `<span class="skill-tag">${s}</span>`).join('') + (ap > 0 ? `<span class="skill-tag">+${ap} AP Growth Boost</span>` : "");
+    document.getElementById('output').style.display = "block";
+    document.getElementById('printBtn').style.display = "block";
+}
+
+function downloadTxt() {
+    if(!lastGenerated) return;
+    const d = lastGenerated;
+    
+    // Formatting the string to match your exact template
+    const content = `CMU UNIT SUBMISSION
+Replace Unit: ${d.unit.name}
+Name: 
+Class: ${d.charClass}
+Description: 
+Affinity: ${d.affinity}
+
+Base Stats:
+HP: ${d.bases.HP} | PWR: ${d.bases.PWR} | SKL: ${d.bases.SKL} | SPD: ${d.bases.SPD} | LCK: ${d.bases.LCK} | DEF: ${d.bases.DEF} | RES: ${d.bases.RES} | CON: ${d.bases.CON}
+
+Growths:
+HP: ${d.growths.HP}% | PWR: ${d.growths.PWR}% | SKL: ${d.growths.SKL}% | SPD: ${d.growths.SPD}% | LCK: ${d.growths.LCK}% | DEF: ${d.growths.DEF}% | RES: ${d.growths.RES}%
+
+Growth Investments:
+${d.ap > 0 ? `+${d.ap} AP Growth Investment` : 'If listed under skill please choose which Stat(s) to apply to'}
+
+Skills: 
+${d.selectedSkills.join(', ')}
+
+Death Quote:`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `replacement_${d.unit.name}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

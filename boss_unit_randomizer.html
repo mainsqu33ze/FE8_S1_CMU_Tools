@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mainsqu33ze CMU Boss Randomizer</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #00d4ff; text-align: center; font-size: 1.5em; text-transform: uppercase; letter-spacing: 2px; }
+        
+        
+        select { background: #2a2a2a; color: white; cursor: pointer; }
+        
+        .btn-gen { background: linear-gradient(135deg, #00d4ff, #005f7a); color: white; font-weight: bold; cursor: pointer; flex: 1; }
+        .btn-print { background: #444; color: white; font-weight: bold; cursor: pointer; flex: 1; display: none; } /* Hidden until first gen */
+        
+        button:hover { transform: scale(1.02); filter: brightness(1.1); }
+        
+        #output { margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; display: none; }
+        .stat-line { display: flex; justify-content: space-between; background: #252525; margin: 4px 0; padding: 8px; border-radius: 4px; }
+        .skill-tag { display: inline-block; background: #005f7a; padding: 4px 10px; border-radius: 20px; font-size: 0.8em; margin: 3px; border: 1px solid #00d4ff; }
+        .label { color: #00d4ff; font-weight: bold; }
+        .button-group { display: flex; gap: 10px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Mainsqu33ze CMU Boss RANDOMIZER</h1>
+    
+    <label>Unit to Replace:</label>
+    <select id="unitSelect"></select>
+    
+    <div class="button-group">
+        <button class="btn-gen" onclick="generate()">GENERATE</button>
+        <button id="printBtn" class="btn-print" onclick="downloadTxt()">PRINT TO .TXT</button>
+    </div>
+
+    <div id="output">
+        <div id="outHeader" style="font-size: 1.4em; font-weight: bold; color: #ffcc00;"></div>
+        <div id="outMeta" style="margin-bottom: 15px; color: #aaa;"></div>
+        
+        <div id="outStats"></div>
+        
+        <div style="margin-top:15px;"><span class="label">Skills:</span></div>
+        <div id="outSkills"></div>
+    </div>
+</div>
+
+<script>
+let lastGenerated = null;
+
+// --- DATA FROM YOUR SPREADSHEET GOES HERE ---
+const unitData = [
+    { name: "O'Neill Ch0", sp: 8, promoted: false },
+    { name: "Breguet Ch1", sp: 10, promoted: false },
+    { name: "Bone Ch2", sp: 12, promoted: false },
+    { name: "Bazba Ch3", sp: 14, promoted: false },
+    { name: "Entombed Ch4", sp: 16, promoted: true },
+    { name: "Saar Ch5", sp: 18, promoted: false },
+    { name: "Zonta Ch5x", sp: 18, promoted: false },
+    { name: "Novala Ch6", sp: 20, promoted: false },
+    { name: "Murray Ch7", sp: 22, promoted: false },
+    { name: "Tirado Ch8", sp: 24, promoted: true },
+    { name: "Binks Ch9", sp: 26, promoted: true },
+    { name: "Pablo Ch10", sp: 28, promoted: true },
+    { name: "Wight Ch11", sp: 30, promoted: true },
+    { name: "Maelduin Ch12", sp: 32, promoted: true },
+    { name: "Aias Ch13", sp: 34, promoted: true },
+    { name: "Pablo Ch13", sp: 34, promoted: true },
+    { name: "Carlyle Ch14", sp: 36, promoted: true },
+    { name: "Caellach Ch15", sp: 36, promoted: true },
+    { name: "Valter Ch15", sp: 38, promoted: true },
+    { name: "Orson Ch16", sp: 40, promoted: true },
+    { name: "Lyon Ch17 ", sp: 42, promoted: true },
+    { name: "Gorgon Ch18", sp: 44, promoted: true },
+    { name: "Riev Ch19", sp: 46, promoted: true },
+    { name: "Morva Ch20", sp: 48, promoted: true }
+];
+
+const skillPool = [
+    { name: "Miracle", cost: 10 }, { name: "Astra", cost: 10 }, { name: "Aether", cost: 10 }, { name: "Acrobat", cost: 10 },
+    { name: "Colossus", cost: 10 }, { name: "Ignis", cost: 10 }, { name: "Wrath", cost: 7 },
+    { name: "Desperation", cost: 7 }, { name: "Darting Stance", cost: 7 }, { name: "Resolve", cost: 7 }, { name: "Counter", cost: 7 },
+    { name: "Swordfaire", cost: 7 }, { name: "Lancefaire", cost: 7 }, { name: "Axefaire", cost: 7 }, { name: "Bowfaire", cost: 7 },
+    { name: "Tomefaire", cost: 7 }, { name: "Axefaith", cost: 7 }, { name: "Rightful King", cost: 7 }, { name: "Celerity", cost: 7 },
+    { name: "Dragon Fang", cost: 7 }, { name: "Vantage", cost: 5 }, { name: "Darting Blow", cost: 5 }, { name: "Death Blow", cost: 5 },
+    { name: "Seal Attack", cost: 5 }, { name: "Seal Speed", cost: 5 }, { name: "Seal Defense", cost: 5 }, { name: "Seal Resistance", cost: 5 },
+    { name: "Certain Blow", cost: 5 }, { name: "Vigilance", cost: 5 }, { name: "Crit Boost", cost: 5 },
+    { name: "Fortune", cost: 5 }, { name: "Hero", cost: 5 }, { name: "Breath of Life", cost: 5 },
+    { name: "Keep Up", cost: 5 }, { name: "Natural Cover", cost: 5 }, { name: "Elbow Room", cost: 5 }, { name: "Nature Rush", cost: 5 },
+    { name: "Charisma", cost: 3 }, { name: "Fortress Defense", cost: 3 }, { name: "Fortress Resistance", cost: 3 },
+    { name: "Indoor Fighter", cost: 3 }, { name: "Outdoor Fighter", cost: 3 },
+    { name: "Canto", cost: 3 }, { name: "Glacies", cost: 3 },
+    { name: "Despoil", cost: 3 }, { name: "Bane", cost: 3 }, { name: "Black Magic", cost: 3 }, { name: "Skybreaker", cost: 3 },
+    { name: "Loyalty", cost: 3 }, { name: "Bond", cost: 3 }, { name: "Resourceful", cost: 3 }, { name: "Lunge", cost: 3 },
+    { name: "Adept", cost: 3 }, { name: "Pass", cost: 2 },
+    { name: "Shade", cost: 2 }, { name: "Demoiselle", cost: 2 }, { name: "Gentilhomme", cost: 2 },
+    { name: "Locktouch", cost: 2 }, { name: "Expertise", cost: 2 }, { name: "Gamble", cost: 2 }, { name: "Armsthrift", cost: 2 },
+    { name: "Corrosion", cost: 2 }, { name: "Watchful", cost: 2 }, { name: "Boon", cost: 2 }, { name: "Liquid Ooze", cost: 2 },
+    { name: "Full Metal Body", cost: 2 }, { name: "Shadowgift", cost: 2 }, { name: "Lumina", cost: 2 }, { name: "Fury", cost: 2 },
+    { name: "Enrage", cost: 2 },
+    { name: "Leadership 5", cost: 5 }, { name: "Leadership 4", cost: 4 }, { name: "Leadership 3", cost: 3 }, { name: "Leadership 2", cost: 2 }, { name: "Leadership 1", cost: 1 },
+    { name: "Provoke", cost: 2 }
+];
+
+const classesUnpromoted = [
+    "Lord(Ln)", "Lord(Sw)", "Soldier", "Cavalier", "Knight", "Mercenary", "Myrmidon", "Thief", "Archer",
+    "Wyvern Rider", "Mage", "Monk", "Shaman", "Fighter", "Brigand", "Pirate", "Pegasus Knight",
+    "Troubadour", "Bonewalker(Sw/Ln)", "Bonewalker(Bow)", "Tarvos", "Gargoyle", "Phantom", "Revenant", "Bael",
+    "Mauthe Doog", "Mogall", "Phantom"
+];
+const classesPromoted = [
+    "Great Lord(Ln)", "Great Lord(Sw)", "Paladin", "Great Knight", "General", "Hero", "Swordmaster", "Assassin", 
+    "Rogue", "Sniper", "Ranger", "Wyvern Lord", "Wyvern Knight", "Sage", "Mage Knight", "Bishop", "Druid", "Summoner",
+    "Warrior", "Berserker", "Falcoknight", "Valkyrie", "Wight(Sw/Ln)", "Wight(Bow)", "Cyclops", "Maelduin", "Deathgoyle",
+    "Entombed", "Elder Bael", "Gwyllgi", "Arch Mogall", "Gorgon", "Living Armor"
+];
+const affinities = ["Fire", "Ice", "Wind", "Thunder", "Anima", "Light", "Dark"];
+
+// Initialize Select Menu
+const select = document.getElementById('unitSelect');
+unitData.forEach((u, index) => {
+    let opt = document.createElement('option');
+    opt.value = index;
+    opt.innerHTML = `${u.name} (SP: ${u.sp}${u.promoted ? ' - Promoted' : ''})`;
+    select.appendChild(opt);
+});
+
+function generate() {
+    const unit = unitData[document.getElementById('unitSelect').value];
+    
+    // 1. Randomize Class based on Promoted status
+    const classPool = unit.promoted ? classesPromoted : classesUnpromoted;
+    const charClass = classPool[Math.floor(Math.random() * classPool.length)];
+    const affinity = affinities[Math.floor(Math.random() * affinities.length)];
+    const hasCanto = [
+        "Cavalier", "Pegasus Knight", "Wyvern Rider", "Paladin", "Falcoknight", "Wyvern Lord", "Ranger",
+        "Great Knight", "Mage Knight", "Troubadour", "Valkyrie", "Tarvos", "Maelduin", "Gargoyle", "Deathgoyle",
+        "Mogall", "Arch Mogall"
+    ].includes(charClass);
+
+    // 2. Distribute SP
+    let stats = { HP:0, PWR:0, SKL:0, SPD:0, LCK:0, DEF:0, RES:0, CON:0 };
+    let keys = Object.keys(stats);
+    for(let i=0; i<unit.sp; i++) stats[keys[Math.floor(Math.random() * keys.length)]]++;
+
+    // 3. Randomize Skills (10 AP)
+    let ap = 10;
+    let selectedSkills = hasCanto ? ["Canto (Free)"] : [];
+    let shuffledSkills = [...skillPool].sort(() => 0.5 - Math.random());
+    
+    for(let s of shuffledSkills) {
+        if(ap >= s.cost && !selectedSkills.includes(s.name)) {
+            selectedSkills.push(`${s.name} (${s.cost} AP)`);
+            ap -= s.cost;
+        }
+    }
+
+    // Save to global variable for Print function
+    lastGenerated = { unit, charClass, affinity, stats, selectedSkills, ap };
+
+    // Display
+    document.getElementById('outHeader').innerText = `Replacement for ${unit.name}`;
+    document.getElementById('outMeta').innerText = `Class: ${charClass} | Affinity: ${affinity}`;
+    
+    let statHtml = "";
+    keys.forEach(k => {
+        statHtml += `<div class="stat-line"><span>${k}</span><span>+${stats[k]}</span></div>`;
+    });
+    document.getElementById('outStats').innerHTML = statHtml;
+    document.getElementById('outSkills').innerHTML = selectedSkills.map(s => `<span class="skill-tag">${s}</span>`).join('') + (ap > 0 ? `<span class="skill-tag">+${ap} AP Growth Boost</span>` : "");
+    document.getElementById('output').style.display = "block";
+    document.getElementById('printBtn').style.display = "block";
+}
+
+function downloadTxt() {
+    if(!lastGenerated) return;
+    const d = lastGenerated;
+    
+    // Formatting the string to match your exact template
+    const content = `CMU BOSS SUBMISSION
+Replace Unit: ${d.unit.name}
+Name: 
+Class: ${d.charClass}
+Description: 
+Affinity: ${d.affinity}
+
+Base Stats:
+HP: ${d.stats.HP} | PWR: ${d.stats.PWR} | SKL: ${d.stats.SKL} | SPD: ${d.stats.SPD} | LCK: ${d.stats.LCK} | DEF: ${d.stats.DEF} | RES: ${d.stats.RES} | CON: ${d.stats.CON}
+
+Skills: 
+${d.selectedSkills.join(', ')}
+
+Death Quote:`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `replacement_${d.unit.name}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

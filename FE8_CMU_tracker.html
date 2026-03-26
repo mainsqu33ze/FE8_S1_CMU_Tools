@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mainsqu33ze CMU Tracker</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 10px; }
+        .container { max-width: 1200px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; overflow-x: auto; }
+        h1 { color: #00d4ff; text-align: center; text-transform: uppercase; margin-top: 0; }
+        
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th { background: #252525; color: #00d4ff; padding: 10px; font-size: 0.8em; text-transform: uppercase; border-bottom: 2px solid #333; }
+        td { padding: 8px; border-bottom: 1px solid #333; text-align: center; }
+        
+        .unit-name { font-weight: bold; color: #ffcc00; text-align: left; }
+        
+        /* Input & Button Styling */
+        input[type="number"] { width: 45px; background: #2a2a2a; border: 1px solid #444; color: white; padding: 4px; border-radius: 4px; }
+        button { cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        .btn-plus { background: #005f7a; color: white; padding: 4px 8px; margin: 0 2px; }
+        .btn-plus:hover { background: #00d4ff; }
+        .btn-add-unit { background: #28a745; color: white; padding: 10px 20px; margin-bottom: 15px; }
+        .btn-clear { background: #dc3545; color: white; padding: 5px 10px; font-size: 0.7em; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>CMU Unit Tracker</h1>
+    
+    <button class="btn-add-unit" onclick="addUnit()">+ Add New Unit</button>
+    <button class="btn-plus" onclick="exportCSV()" style="background: #00d4ff; color: #000;">EXPORT TO CSV</button>
+    <button class="btn-clear" onclick="clearData()" style="float: right;">Reset All Data</button>
+
+    <table id="trackerTable">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th>Hit/Miss</th>
+                <th>Acc</th>
+                <th>Crit</th>
+                <th>Bonked</th>
+                <th>Kills</th>
+                <th>Evaded</th>
+                <th>lvl</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="unitBody">
+            </tbody>
+    </table>
+</div>
+
+<script>
+        // Load data from browser memory (localStorage)
+        let units = JSON.parse(localStorage.getItem('cmu_data')) || [];
+
+        function save() {
+            localStorage.setItem('cmu_data', JSON.stringify(units));
+            render();
+        }
+
+        function addUnit() {
+            const name = prompt("Enter Unit Name (e.g., Eirika, Seth):");
+            if (!name) return;
+            units.push({
+                name: name,
+                hit: 0,
+                miss: 0,
+                crit: 0,
+                bonked: 0, // Your new tracked stat
+                kills: 0,
+                evaded: 0,
+                lvl: 0
+            });
+            save();
+        }
+
+        // Updates numeric stats. Added a check to prevent negative numbers.
+        function update(index, key, amount) {
+            units[index][key] = Math.max(0, units[index][key] + amount);
+            save();
+        }
+
+        function removeUnit(index) {
+            if (confirm(`Remove ${units[index].name} from the tracker?`)) {
+                units.splice(index, 1);
+                save();
+            }
+        }
+
+        function clearData() {
+            if (confirm("Wipe all data? This cannot be undone!")) {
+                units = [];
+                save();
+            }
+        }
+
+        function exportCSV() {
+            if (units.length === 0) return alert("No data to export!");
+
+            const headers = ["Unit", "Hit", "Miss", "Acc %", "Crit", "Bonked", "Kills", "Evaded", "Lvl"];
+            const rows = units.map(u => {
+                const total = u.hit + u.miss;
+                const acc = (total > 0) ? Math.round((u.hit / total) * 100) : 0;
+                return [u.name, u.hit, u.miss, acc + "%", u.crit, u.bonked, u.kills, u.evaded, u.lvl].join(",");
+            });
+
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `FE8_Snapshot_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function render() {
+            const body = document.getElementById('unitBody');
+            body.innerHTML = "";
+            
+            units.forEach((u, i) => {
+                const row = document.createElement('tr');
+                
+                // Calculate Accuracy percentage
+                const totalAttacks = u.hit + u.miss;
+                const acc = (totalAttacks > 0) ? Math.round((u.hit / totalAttacks) * 100) : 0;
+                
+                row.innerHTML = `
+                    <td class="unit-name">${u.name}</td>
+                    <td>
+                        <button class="btn-plus" onclick="update(${i}, 'hit', 1)">H: ${u.hit}</button>
+                        <button class="btn-plus" onclick="update(${i}, 'miss', 1)">M: ${u.miss}</button>
+                    </td>
+                    <td style="font-weight: bold; color: ${acc > 80 ? '#28a745' : '#eee'}">${acc}%</td>
+                    <td><button class="btn-plus" onclick="update(${i}, 'crit', 1)" style="background: #f39c12;">${u.crit}</button></td>
+                    <td><button class="btn-plus" onclick="update(${i}, 'bonked', 1)" style="background: #6a1b9a;">${u.bonked}</button></td>
+                    <td><button class="btn-plus" onclick="update(${i}, 'kills', 1)" style="background: #c0392b;">${u.kills}</button></td>
+                    <td><button class="btn-plus" onclick="update(${i}, 'evaded', 1)" style="background: #6a1b9a;">${u.evaded}</button></td>
+                    <td><button class="btn-plus" onclick="update(${i}, 'lvl', 1)">${u.lvl}</button></td>
+                    <td><button class="btn-clear" onclick="removeUnit(${i})">X</button></td>
+                `;
+                body.appendChild(row);
+            });
+        }
+
+        // Initial draw on page load
+        render();
+    </script>
+</body>
+</html>
