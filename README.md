@@ -7,7 +7,7 @@ Use this to fully follow the rules defined in the [Mainsqu33ze FE8 CMU guide](ht
 * Click randomize
 * Click print
 * Submit your unit on [Discord](https://discord.gg/ejZxsCMs5a)
-- [Player Unit Randomizer](./docs/pro_unit_randomizer.html/)
+
 
 ## Boss randomizer
 Use this to fully follow the rules defined in the [Mainsqu33ze FE8 CMU guide](https://docs.google.com/document/d/1HoySNDHte_pZ4KlqfQh1SshLDDM83BESv3rB_3BaHhQ/edit?tab=t.0#heading=h.b9tmdz4u684a) and make a boss unit in as simple as 3 button clicks.
@@ -15,7 +15,7 @@ Use this to fully follow the rules defined in the [Mainsqu33ze FE8 CMU guide](ht
 * Click randomize
 * Click print
 * [Video showing this off for the first 16 CMU bosses](https://youtube.com/shorts/nPdCJPduBh8?si=yUDgsgfRMbNMH24B)
-- [Boss unit Randomizer](./docs/boss_unit_randomizer.html)
+
 
 ## Combat tracker 
 Use this to easily track key details during each chapter.
@@ -24,4 +24,4 @@ Use this to easily track key details during each chapter.
 * Simply click the buttons as the chapter unfolds.
 * Click the print to csv button after each chapter to follow along with what I will be doing.
 *   The data gathered from this will be used to populate an RShiny application.
-- [Chapter Combat Tracker](./docs/FE8_CMU_tracker.html)
+
