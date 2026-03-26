@@ -9,6 +9,7 @@
 <body>
     <header>
         <h1>Tool Dashboard</h1>
+        <button id="theme-toggle" aria-label="Toggle dark mode">🌙 Dark Mode</button>
         <p>Select a utility to begin your session.</p>
     </header>
 
@@ -30,5 +31,28 @@
             </a>
         </nav>
     </main>
+    <script>
+        const toggleBtn = document.getElementById('theme-toggle');
+        const body = document.body;
+
+        // Check for saved user preference
+        if (localStorage.getItem('theme') === 'dark') {
+            body.classList.add('dark-mode');
+            toggleBtn.textContent = '☀️ Light Mode';
+        }
+
+        // 2. Add the click event listener
+        toggleBtn.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            
+            if (body.classList.contains('dark-mode')) {
+                toggleBtn.textContent = '☀️ Light Mode';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                toggleBtn.textContent = '🌙 Dark Mode';
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    </script>
 </body>
 </html>
