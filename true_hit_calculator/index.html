@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FE8 True Hit Calculator</title>
+    <style>
+        :root {
+            --fe-blue: #1a2a44;
+            --fe-gold: #c5a059;
+            --fe-text: #e0e0e0;
+            --fe-accent: #3a5a8c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: var(--fe-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--fe-blue);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 3px solid var(--fe-gold);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--fe-gold);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--fe-gold);
+        }
+
+        .hit-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            margin: 1rem 0;
+        }
+
+        .result-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--fe-gold);
+        }
+
+        .true-hit-val {
+            font-size: 2rem;
+            color: #4ade80;
+            display: block;
+        }
+
+        .comparison {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            opacity: 0.8;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: var(--fe-gold);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>True Hit Calc</h1>
+    
+    <div class="input-group">
+        <label for="hitRange">Displayed Hit Rate</label>
+        <div class="hit-display" id="displayVal">77%</div>
+        <input type="range" id="hitRange" min="0" max="100" value="77">
+    </div>
+
+    <div class="result-box">
+        <label>Actual Probability (2RN)</label>
+        <span class="true-hit-val" id="trueHitVal">89.65%</span>
+        <div class="comparison" id="diffVal">+12.65% Boost</div>
+    </div>
+
+    <p class="footer">Built for FE8 Sacred Stones Mechanics</p>
+</div>
+
+<script>
+    const range = document.getElementById('hitRange');
+    const displayVal = document.getElementById('displayVal');
+    const trueHitVal = document.getElementById('trueHitVal');
+    const diffVal = document.getElementById('diffVal');
+
+    function calculate2RN(H) {
+        // The 2RN logic: average of two RNs (0-99) < H
+        // Total combinations = 10,000
+        let hits = 0;
+        
+        // Piecewise function for efficiency
+        if (H <= 50) {
+            // Number of combinations where R1 + R2 < 2H
+            hits = (H * (2 * H + 1));
+        } else {
+            // 10000 - combinations where R1 + R2 >= 2H
+            let inverseH = 100 - H;
+            hits = 10000 - (inverseH * (2 * inverseH - 1));
+        }
+        
+        return (hits / 100).toFixed(2);
+    }
+
+    range.addEventListener('input', () => {
+        const val = parseInt(range.value);
+        const trueHit = calculate2RN(val);
+        const difference = (trueHit - val).toFixed(2);
+
+        displayVal.textContent = `${val}%`;
+        trueHitVal.textContent = `${trueHit}%`;
+        
+        if (difference > 0) {
+            diffVal.textContent = `+${difference}% Favoring Player`;
+            diffVal.style.color = "#4ade80";
+        } else if (difference < 0) {
+            diffVal.textContent = `${difference}% Favoring Enemy`;
+            diffVal.style.color = "#f87171";
+        } else {
+            diffVal.textContent = "Neutral (50/50)";
+            diffVal.style.color = "#e0e0e0";
+        }
+    });
+</script>
+
+</body>
+</html>
