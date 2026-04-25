@@ -144,10 +144,10 @@
         trueHitVal.textContent = `${trueHit}%`;
         
         if (difference > 0) {
-            diffVal.textContent = `+${difference}% Favoring Player`;
+            diffVal.textContent = `+${difference}% Favoring Attacker`;
             diffVal.style.color = "#4ade80";
         } else if (difference < 0) {
-            diffVal.textContent = `${difference}% Favoring Enemy`;
+            diffVal.textContent = `${difference}% Favoring Defender`;
             diffVal.style.color = "#f87171";
         } else {
             diffVal.textContent = "Neutral (50/50)";
