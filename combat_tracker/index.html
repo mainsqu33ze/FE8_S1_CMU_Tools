@@ -2,151 +2,284 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mainsqu33ze CMU Tracker</title>
+    <title>Mainsqu33ze CMU Tracker - Card Edition</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 10px; }
-        .container { max-width: 1200px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; overflow-x: auto; }
-        h1 { color: #00d4ff; text-align: center; text-transform: uppercase; margin-top: 0; }
-        
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-        th { background: #252525; color: #00d4ff; padding: 10px; font-size: 0.8em; text-transform: uppercase; border-bottom: 2px solid #333; }
-        td { padding: 8px; border-bottom: 1px solid #333; text-align: center; }
-        
-        .unit-name { font-weight: bold; color: #ffcc00; text-align: left; }
-        
-        /* Input & Button Styling */
-        input[type="number"] { width: 45px; background: #2a2a2a; border: 1px solid #444; color: white; padding: 4px; border-radius: 4px; }
-        button { cursor: pointer; border: none; border-radius: 4px; font-weight: bold; transition: 0.2s; }
-        .btn-plus { background: #005f7a; color: white; padding: 4px 8px; margin: 0 2px; }
-        .btn-plus:hover { background: #00d4ff; }
-        .btn-add-unit { background: #28a745; color: white; padding: 10px 20px; margin-bottom: 15px; }
-        .btn-clear { background: #dc3545; color: white; padding: 5px 10px; font-size: 0.7em; }
+        :root {
+            --bg-dark: #121212;
+            --card-bg: #1e1e1e;
+            --primary: #00d4ff;
+            --accent: #ffcc00;
+            --danger: #dc3545;
+            --success: #28a745;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-dark); 
+            color: #eee; 
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container { 
+            max-width: 1400px; 
+            margin: auto; 
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 15px;
+        }
+
+        h1 { color: var(--primary); margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* Grid System */
+        .unit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        /* Card Styling */
+        .unit-card {
+            background: var(--card-bg);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .unit-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 212, 255, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #444;
+        }
+
+        .unit-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .accuracy-badge {
+            font-size: 0.9em;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #252525;
+        }
+
+        /* Button Layout within Cards */
+        .stats-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .label {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            color: #888;
+            margin-left: 2px;
+        }
+
+        button { 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            transition: 0.1s; 
+            padding: 10px;
+            color: white;
+            font-size: 1em;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        .btn-stat { background: #333; border: 1px solid #444; }
+        .btn-stat:hover { background: #444; }
+
+        .btn-hit { border-left: 4px solid var(--primary); }
+        .btn-miss { border-left: 4px solid #555; }
+        .btn-crit { border-left: 4px solid #f39c12; }
+        .btn-kill { border-left: 4px solid var(--danger); }
+        .btn-evade { border-left: 4px solid #6a1b9a; }
+        .btn-lvl { border-left: 4px solid var(--success); }
+
+        /* Global Controls */
+        .controls-top { margin-bottom: 20px; display: flex; gap: 10px; }
+        .btn-main { background: var(--primary); color: #000; padding: 12px 24px; font-size: 1em; }
+        .btn-export { background: #555; }
+        .btn-clear { background: var(--danger); font-size: 0.8em; margin-left: auto; }
+
+        .remove-unit {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--danger);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            visibility: hidden;
+        }
+
+        .unit-card:hover .remove-unit { visibility: visible; }
+
+        @media (max-width: 600px) {
+            .unit-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>CMU Unit Tracker</h1>
+    <header>
+        <h1>CMU Tracker</h1>
+        <button class="btn-clear" onclick="clearData()">WIPE DATA</button>
+    </header>
     
-    <button class="btn-add-unit" onclick="addUnit()">+ Add New Unit</button>
-    <button class="btn-plus" onclick="exportCSV()" style="background: #00d4ff; color: #000;">EXPORT TO CSV</button>
-    <button class="btn-clear" onclick="clearData()" style="float: right;">Reset All Data</button>
+    <div class="controls-top">
+        <button class="btn-main" onclick="addUnit()">+ ADD UNIT</button>
+        <button class="btn-main btn-export" onclick="exportCSV()">EXPORT CSV</button>
+    </div>
 
-    <table id="trackerTable">
-        <thead>
-            <tr>
-                <th>Unit</th>
-                <th>Hit/Miss</th>
-                <th>Acc</th>
-                <th>Crit</th>
-                <th>Bonked</th>
-                <th>Kills</th>
-                <th>Evaded</th>
-                <th>lvl</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="unitBody">
-            </tbody>
-    </table>
+    <div id="unitGrid" class="unit-grid">
+        </div>
 </div>
 
 <script>
-        // Load data from browser memory (localStorage)
-        let units = JSON.parse(localStorage.getItem('cmu_data')) || [];
+    let units = JSON.parse(localStorage.getItem('cmu_data')) || [];
 
-        function save() {
-            localStorage.setItem('cmu_data', JSON.stringify(units));
-            render();
-        }
-
-        function addUnit() {
-            const name = prompt("Enter Unit Name (e.g., Eirika, Seth):");
-            if (!name) return;
-            units.push({
-                name: name,
-                hit: 0,
-                miss: 0,
-                crit: 0,
-                bonked: 0, // Your new tracked stat
-                kills: 0,
-                evaded: 0,
-                lvl: 0
-            });
-            save();
-        }
-
-        // Updates numeric stats. Added a check to prevent negative numbers.
-        function update(index, key, amount) {
-            units[index][key] = Math.max(0, units[index][key] + amount);
-            save();
-        }
-
-        function removeUnit(index) {
-            if (confirm(`Remove ${units[index].name} from the tracker?`)) {
-                units.splice(index, 1);
-                save();
-            }
-        }
-
-        function clearData() {
-            if (confirm("Wipe all data? This cannot be undone!")) {
-                units = [];
-                save();
-            }
-        }
-
-        function exportCSV() {
-            if (units.length === 0) return alert("No data to export!");
-
-            const headers = ["Unit", "Hit", "Miss", "Acc %", "Crit", "Bonked", "Kills", "Evaded", "Lvl"];
-            const rows = units.map(u => {
-                const total = u.hit + u.miss;
-                const acc = (total > 0) ? Math.round((u.hit / total) * 100) : 0;
-                return [u.name, u.hit, u.miss, acc + "%", u.crit, u.bonked, u.kills, u.evaded, u.lvl].join(",");
-            });
-
-            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `FE8_Snapshot_${new Date().toLocaleDateString()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function render() {
-            const body = document.getElementById('unitBody');
-            body.innerHTML = "";
-            
-            units.forEach((u, i) => {
-                const row = document.createElement('tr');
-                
-                // Calculate Accuracy percentage
-                const totalAttacks = u.hit + u.miss;
-                const acc = (totalAttacks > 0) ? Math.round((u.hit / totalAttacks) * 100) : 0;
-                
-                row.innerHTML = `
-                    <td class="unit-name">${u.name}</td>
-                    <td>
-                        <button class="btn-plus" onclick="update(${i}, 'hit', 1)">H: ${u.hit}</button>
-                        <button class="btn-plus" onclick="update(${i}, 'miss', 1)">M: ${u.miss}</button>
-                    </td>
-                    <td style="font-weight: bold; color: ${acc > 80 ? '#28a745' : '#eee'}">${acc}%</td>
-                    <td><button class="btn-plus" onclick="update(${i}, 'crit', 1)" style="background: #f39c12;">${u.crit}</button></td>
-                    <td><button class="btn-plus" onclick="update(${i}, 'bonked', 1)" style="background: #6a1b9a;">${u.bonked}</button></td>
-                    <td><button class="btn-plus" onclick="update(${i}, 'kills', 1)" style="background: #c0392b;">${u.kills}</button></td>
-                    <td><button class="btn-plus" onclick="update(${i}, 'evaded', 1)" style="background: #6a1b9a;">${u.evaded}</button></td>
-                    <td><button class="btn-plus" onclick="update(${i}, 'lvl', 1)">${u.lvl}</button></td>
-                    <td><button class="btn-clear" onclick="removeUnit(${i})">X</button></td>
-                `;
-                body.appendChild(row);
-            });
-        }
-
-        // Initial draw on page load
+    function save() {
+        localStorage.setItem('cmu_data', JSON.stringify(units));
         render();
-    </script>
+    }
+
+    function addUnit() {
+        const name = prompt("Unit Name:");
+        if (!name) return;
+        units.push({
+            name: name,
+            hit: 0,
+            miss: 0,
+            crit: 0,
+            bonked: 0,
+            kills: 0,
+            evaded: 0,
+            lvl: 0
+        });
+        save();
+    }
+
+    // Left click adds 1, Right click subtracts 1
+    function handleUpdate(e, index, key) {
+        e.preventDefault();
+        const amount = (e.type === 'click') ? 1 : -1;
+        units[index][key] = Math.max(0, units[index][key] + amount);
+        save();
+    }
+
+    function removeUnit(index) {
+        if (confirm(`Remove ${units[index].name}?`)) {
+            units.splice(index, 1);
+            save();
+        }
+    }
+
+    function clearData() {
+        if (confirm("Permanently wipe all units?")) {
+            units = [];
+            save();
+        }
+    }
+
+    function exportCSV() {
+        if (units.length === 0) return alert("No data!");
+        const headers = ["Unit", "Hit", "Miss", "Acc%", "Crit", "Bonked", "Kills", "Evaded", "Lvl"];
+        const rows = units.map(u => {
+            const total = u.hit + u.miss;
+            const acc = (total > 0) ? Math.round((u.hit / total) * 100) : 0;
+            return [u.name, u.hit, u.miss, acc + "%", u.crit, u.bonked, u.kills, u.evaded, u.lvl].join(",");
+        });
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", `FE_Stats_${new Date().toLocaleDateString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function render() {
+        const grid = document.getElementById('unitGrid');
+        grid.innerHTML = "";
+        
+        units.forEach((u, i) => {
+            const total = u.hit + u.miss;
+            const acc = (total > 0) ? Math.round((u.hit / total) * 100) : 0;
+            const accColor = acc > 80 ? '#28a745' : acc > 50 ? '#ffcc00' : '#dc3545';
+
+            const card = document.createElement('div');
+            card.className = 'unit-card';
+            card.innerHTML = `
+                <button class="remove-unit" onclick="removeUnit(${i})">✕</button>
+                <div class="card-header">
+                    <span class="unit-name">${u.name}</span>
+                    <span class="accuracy-badge" style="color: ${accColor}">${acc}% ACC</span>
+                </div>
+                <div class="stats-controls">
+                    <div class="stat-group">
+                        <span class="label">Accuracy</span>
+                        <button class="btn-stat btn-hit" onclick="handleUpdate(event, ${i}, 'hit')" oncontextmenu="handleUpdate(event, ${i}, 'hit')">HIT: ${u.hit}</button>
+                        <button class="btn-stat btn-miss" onclick="handleUpdate(event, ${i}, 'miss')" oncontextmenu="handleUpdate(event, ${i}, 'miss')">MISS: ${u.miss}</button>
+                    </div>
+                    <div class="stat-group">
+                        <span class="label">Combat</span>
+                        <button class="btn-stat btn-crit" onclick="handleUpdate(event, ${i}, 'crit')" oncontextmenu="handleUpdate(event, ${i}, 'crit')">CRIT: ${u.crit}</button>
+                        <button class="btn-stat btn-kill" onclick="handleUpdate(event, ${i}, 'kills')" oncontextmenu="handleUpdate(event, ${i}, 'kills')">KILL: ${u.kills}</button>
+                    </div>
+                    <div class="stat-group">
+                        <span class="label">Defense</span>
+                        <button class="btn-stat btn-evade" onclick="handleUpdate(event, ${i}, 'evaded')" oncontextmenu="handleUpdate(event, ${i}, 'evaded')">EVADE: ${u.evaded}</button>
+                        <button class="btn-stat btn-stat" onclick="handleUpdate(event, ${i}, 'bonked')" oncontextmenu="handleUpdate(event, ${i}, 'bonked')">BONK: ${u.bonked}</button>
+                    </div>
+                    <div class="stat-group">
+                        <span class="label">Growth</span>
+                        <button class="btn-stat btn-lvl" onclick="handleUpdate(event, ${i}, 'lvl')" oncontextmenu="handleUpdate(event, ${i}, 'lvl')">LVL: ${u.lvl}</button>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    render();
+</script>
+
 </body>
 </html>
