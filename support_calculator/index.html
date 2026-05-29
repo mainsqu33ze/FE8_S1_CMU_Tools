@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FE8 Support Compatibility Calculator</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 650px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #00d4ff; text-align: center; font-size: 1.5em; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; }
+        .status { text-align: center; color: #aaa; margin: 15px 0; font-size: 0.9em; }
+        .status.error { color: #dc3545; }
+        .status.loading { color: #ffcc00; }
+        .dropdown-row { display: flex; gap: 15px; margin: 15px 0; }
+        .dropdown-group { flex: 1; }
+        .dropdown-group label { display: block; color: #00d4ff; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; font-weight: bold; }
+        select { width: 100%; padding: 10px; border-radius: 8px; border: none; font-size: 1rem; background: #2a2a2a; color: white; cursor: pointer; box-sizing: border-box; }
+        select:disabled { opacity: 0.4; cursor: not-allowed; }
+        select option { background: #2a2a2a; color: white; }
+        #results { margin-top: 20px; padding-top: 20px; border-top: 1px solid #333; display: none; }
+        .pair-header { font-size: 1.3em; font-weight: bold; color: #ffcc00; margin-bottom: 15px; text-align: center; }
+        .pair-header .aff { color: #00d4ff; }
+        .bonus-table { width: 100%; border-collapse: collapse; }
+        .bonus-table th { color: #aaa; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; padding: 8px 10px; text-align: center; border-bottom: 1px solid #333; }
+        .bonus-table th:first-child { text-align: left; }
+        .bonus-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #252525; }
+        .bonus-table td:first-child { text-align: left; color: #00d4ff; font-weight: bold; }
+        .bonus-table .level-header { background: #252525; color: #ffcc00; font-weight: bold; font-size: 0.85em; }
+        .bonus-table .positive { color: #28a745; }
+        .bonus-table .zero { color: #555; }
+        .retry-btn { display: block; margin: 10px auto; background: #444; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 0.9em; }
+        .retry-btn:hover { background: #555; }
+        .affinity-key { margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; }
+        .affinity-key summary { color: #aaa; cursor: pointer; font-size: 0.85em; }
+        .affinity-key table { width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 0.8em; }
+        .affinity-key td { padding: 4px 8px; border-bottom: 1px solid #252525; }
+        .affinity-key td:first-child { color: #00d4ff; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>FE8 Support Calculator</h1>
+
+    <div class="dropdown-row">
+        <div class="dropdown-group">
+            <label for="unit1">Unit 1</label>
+            <select id="unit1"><option value="">— Select unit —</option></select>
+        </div>
+        <div class="dropdown-group">
+            <label for="unit2">Unit 2</label>
+            <select id="unit2" disabled><option value="">— Select unit —</option></select>
+        </div>
+    </div>
+
+    <div id="status" class="status loading">Loading support data…</div>
+
+    <div id="results">
+        <div class="pair-header" id="pairHeader"></div>
+        <table class="bonus-table" id="bonusTable"></table>
+    </div>
+
+    <details class="affinity-key">
+        <summary>Affinity bonus key (per unit per support level)</summary>
+        <table>
+            <tr><td>Fire</td><td>+0.5 Atk, +2.5 Hit, +2.5 Avo, +2.5 Crit</td></tr>
+            <tr><td>Anima</td><td>+0.5 Atk, +0.5 Def, +2.5 Avo, +2.5 Crit Evade</td></tr>
+            <tr><td>Light</td><td>+0.5 Atk, +0.5 Def, +2.5 Hit, +2.5 Crit</td></tr>
+            <tr><td>Thunder</td><td>+0.5 Def, +2.5 Avo, +2.5 Crit, +2.5 Crit Evade</td></tr>
+            <tr><td>Wind</td><td>+0.5 Atk, +2.5 Hit, +2.5 Crit, +2.5 Crit Evade</td></tr>
+            <tr><td>Ice</td><td>+0.5 Def, +2.5 Hit, +2.5 Avo, +2.5 Crit Evade</td></tr>
+            <tr><td>Dark</td><td>+2.5 Hit, +2.5 Avo, +2.5 Crit, +2.5 Crit Evade</td></tr>
+        </table>
+    </details>
+</div>
+
+<script>
+const DATA_URL = 'FE8_CMU_Supports.csv';
+
+const AFFINITY_BONUSES = {
+    Fire:    { atk: 0.5, def: 0,    hit: 2.5, avo: 2.5, crit: 2.5, critEvade: 0    },
+    Anima:   { atk: 0.5, def: 0.5,  hit: 0,   avo: 2.5, crit: 0,   critEvade: 2.5 },
+    Light:   { atk: 0.5, def: 0.5,  hit: 2.5, avo: 0,   crit: 2.5, critEvade: 0    },
+    Thunder: { atk: 0,   def: 0.5,  hit: 0,   avo: 2.5, crit: 2.5, critEvade: 2.5 },
+    Wind:    { atk: 0.5, def: 0,    hit: 2.5, avo: 0,   crit: 2.5, critEvade: 2.5 },
+    Ice:     { atk: 0,   def: 0.5,  hit: 2.5, avo: 2.5, crit: 0,   critEvade: 2.5 },
+    Dark:    { atk: 0,   def: 0,    hit: 2.5, avo: 2.5, crit: 2.5, critEvade: 2.5 }
+};
+
+const STATS = ['atk', 'def', 'hit', 'avo', 'crit', 'critEvade'];
+const STAT_LABELS = { atk: 'Attack', def: 'Defense', hit: 'Hit', avo: 'Avoid', crit: 'Critical', critEvade: 'Crit Evade' };
+const LEVEL_MULT = { C: 1, B: 2, A: 3 };
+
+let units = [];
+
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const result = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = [];
+        let cur = '', inQ = false;
+        for (const ch of lines[i]) {
+            if (ch === '"') { inQ = !inQ; continue; }
+            if (ch === ',' && !inQ) { values.push(cur.trim()); cur = ''; continue; }
+            cur += ch;
+        }
+        values.push(cur.trim());
+        if (values.length < 3) continue;
+        result.push({
+            name: values[0],
+            affinity: values[1],
+            supportsWith: values[2].split(',').map(s => s.trim())
+        });
+    }
+    return result;
+}
+
+function populateDropdowns(data) {
+    const sel1 = document.getElementById('unit1');
+    const sel2 = document.getElementById('unit2');
+    sel1.innerHTML = '<option value="">— Select unit —</option>';
+
+    data.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.name;
+        opt.textContent = `${u.name} (${u.affinity})`;
+        sel1.appendChild(opt);
+    });
+
+    sel1.addEventListener('change', () => {
+        const primary = data.find(u => u.name === sel1.value);
+        sel2.innerHTML = '<option value="">— Select partner —</option>';
+        sel2.disabled = !primary;
+        document.getElementById('results').style.display = 'none';
+        if (!primary) return;
+
+        const valid = new Set(primary.supportsWith);
+        const sorted = data.filter(u => u.name !== primary.name && valid.has(u.name))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        sorted.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.name;
+            opt.textContent = `${u.name} (${u.affinity})`;
+            sel2.appendChild(opt);
+        });
+    });
+
+    sel2.addEventListener('change', () => {
+        if (sel1.value && sel2.value) showResults();
+        else document.getElementById('results').style.display = 'none';
+    });
+}
+
+function showResults() {
+    const u1 = units.find(u => u.name === document.getElementById('unit1').value);
+    const u2 = units.find(u => u.name === document.getElementById('unit2').value);
+    if (!u1 || !u2) return;
+
+    const b1 = AFFINITY_BONUSES[u1.affinity];
+    const b2 = AFFINITY_BONUSES[u2.affinity];
+    if (!b1 || !b2) return;
+
+    document.getElementById('pairHeader').innerHTML =
+        `${u1.name} <span class="aff">(${u1.affinity})</span> + ${u2.name} <span class="aff">(${u2.affinity})</span>`;
+
+    let html = `<tr><th>Stat</th><th>C Support</th><th>B Support</th><th>A Support</th></tr>`;
+    STATS.forEach(stat => {
+        const perLevel = b1[stat] + b2[stat];
+        html += `<tr>`;
+        html += `<td>${STAT_LABELS[stat]}</td>`;
+        [1, 2, 3].forEach(mult => {
+            const val = perLevel * mult;
+            const cls = val > 0 ? 'positive' : 'zero';
+            html += `<td class="${cls}">+${val.toFixed(1)}</td>`;
+        });
+        html += `</tr>`;
+    });
+
+    document.getElementById('bonusTable').innerHTML = html;
+    document.getElementById('results').style.display = 'block';
+}
+
+const EMBEDDED_CSV = `Unit,Affinity,Supports_with
+Lala-Licious,Anima,"Edge,Boppington,Tina,L'Archella,TinythMighty,Bramble,Fusion"
+Edge,Thunder,"Lala-Licious,Claus,Fusion,Myrna,L'Archella,Eclaire,TinythMighty"
+Boppington,Dark,"Fluffy,Lala-Licious,Healena,Nessi,Austin"
+Fluffy,Fire,"Boppington,Buraq,Fusion,Rosey,Nessi"
+Buraq,Thunder,"Healena,Fluffy,Procbot1,Ben,Zianna"
+Ben,Anima,"Mikaela,Annie,Buraq,Procbot1"
+Mikaela,Fire,"Ben,Procbot1,Fiddle,Fusion,Bramble"
+Healena,Anima,"Dodger,Neil,Boppington,Zianna,Buraq"
+Dodger,Wind,"Healena,Fiddle,Rosey,Heavy,Halley"
+Annie,Light,"Zianna,Manager,Slipshade,Ben,Claus"
+Zianna,Anima,"Annie,Healena,Rosey,Zephyr,Buraq"
+Zephyr,Wind,"Fiddle,Supremacy,Austin,Zianna,Rudeas"
+Fiddle,Wind,"Zephyr,Dodger,Ashe,Claus,Mikaela"
+Nessi,Thunder,"Rudeas,Ashe,Austin,Boppington,Fluffy"
+Rudeas,Ice,"Nessi,Bramble,Zephyr,L'Archella,Manager,Halley"
+Claus,Wind,"Fusion,Edge,Procbot1,Annie,Fiddle"
+Fusion,Fire,"Claus,Mikaela,Edge,Fluffy,Lala-Licious"
+TinythMighty,Thunder,"Edge,Procbot1,Austin,Bramble,Lala-Licious,Manager"
+Bramble,Fire,"Halley,Mikaela,TinythMighty,Rudeas,L'Archella,Lala-Licious"
+Halley,Thunder,"Bramble,Supremacy,Manager,Tina,Rudeas,Dodger"
+Supremacy,Dark,"Heavy,Halley,Manager,Slipshade,Zephyr"
+Manager,Thunder,"TinythMighty,Supremacy,Halley,Rudeas,Annie"
+Tina,Fire,"Myrna,Heavy,Halley,Lala-Licious"
+Heavy,Ice,"Supremacy,Tina,Neil,Rosey,Dodger"
+L'Archella,Fire,"Neil,Slipshade,Rudeas,Lala-Licious,Edge,Bramble"
+Neil,Light,"L'Archella,Myrna,Slipshade,Heavy,Healena"
+Austin,Fire,"Eclaire,TinythMighty,Nessi,Zephyr,Boppington"
+Rosey,Thunder,"Zianna,Eclaire,Heavy,Dodger,Fluffy"
+Slipshade,Dark,"Supremacy,L'Archella,Neil,Annie"
+Eclaire,Thunder,"Austin,Rosey,Ashe,Edge"
+Myrna,Fire,"Tina,Neil,Edge"
+Ashe,Fire,"Nessi,Eclaire,Fiddle"
+Procbot1,Ice,"Claus,Mikaela,Ben,Buraq,TinythMighty"`;
+
+function loadData() {
+    const status = document.getElementById('status');
+
+    fetch(DATA_URL)
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.text();
+        })
+        .then(csv => {
+            units = parseCSV(csv);
+            if (units.length === 0) throw new Error('No data parsed');
+            status.style.display = 'none';
+            populateDropdowns(units);
+        })
+        .catch(() => {
+            units = parseCSV(EMBEDDED_CSV);
+            status.style.display = 'none';
+            populateDropdowns(units);
+        });
+}
+
+loadData();
+</script>
+</body>
+</html>
