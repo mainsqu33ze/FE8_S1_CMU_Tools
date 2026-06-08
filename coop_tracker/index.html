@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FE Awakening Co-op Point Tracker</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #eee; padding: 20px; display: flex; justify-content: center; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 550px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #00d4ff; text-align: center; font-size: 1.4em; text-transform: uppercase; letter-spacing: 2px; margin-top: 0; }
+        
+        .toggle-group { display: flex; background: #252525; border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+        .toggle-btn { flex: 1; padding: 10px; border: none; background: transparent; color: #888; font-weight: bold; font-size: 1rem; border-radius: 8px; cursor: pointer; transition: 0.15s; }
+        .toggle-btn.active { background: #00d4ff; color: #000; }
+        .toggle-btn:hover:not(.active) { color: #eee; }
+
+        .scores { display: flex; gap: 15px; margin-bottom: 20px; }
+        .score-card { flex: 1; background: #252525; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #333; }
+        .score-label { display: block; font-size: 0.75em; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-bottom: 8px; }
+        .score-value { display: block; font-size: 3em; font-weight: bold; color: #ffcc00; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .actions button { padding: 14px; border: none; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; color: white; transition: 0.1s; }
+        .actions button:active { transform: scale(0.96); }
+        .btn-kill { background: #005f7a; border-left: 4px solid #00d4ff; }
+        .btn-lvl { background: #1a5a1a; border-left: 4px solid #28a745; }
+        .btn-promo { background: #5a3a0a; border-left: 4px solid #ffcc00; }
+        .btn-death { background: #5a0a0a; border-left: 4px solid #dc3545; }
+
+        .bottom-actions { display: flex; gap: 10px; }
+        .bottom-actions button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 0.9rem; cursor: pointer; color: white; transition: 0.1s; }
+        .btn-undo { background: #444; }
+        .btn-undo:hover { background: #555; }
+        .btn-undo:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-wipe { background: #6b1a1a; }
+        .btn-wipe:hover { background: #8a2222; }
+
+        #history { margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; }
+        #history summary { color: #aaa; cursor: pointer; font-size: 0.85em; }
+        #history-log { margin-top: 10px; max-height: 200px; overflow-y: auto; font-size: 0.85em; }
+        .log-entry { padding: 4px 8px; border-bottom: 1px solid #252525; display: flex; justify-content: space-between; }
+        .log-entry .log-player { color: #00d4ff; }
+        .log-entry .log-action { color: #aaa; }
+        .log-entry .log-points.pos { color: #28a745; }
+        .log-entry .log-points.neg { color: #dc3545; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>FE Awakening Co-op Tracker</h1>
+
+    <div class="toggle-group">
+        <button class="toggle-btn active" data-player="mainsqu33ze">mainsqu33ze</button>
+        <button class="toggle-btn" data-player="minibossATLAS">MinibossATLAS</button>
+    </div>
+
+    <div class="scores">
+        <div class="score-card">
+            <span class="score-label">mainsqu33ze</span>
+            <span class="score-value" id="score-mainsqu33ze">0</span>
+        </div>
+        <div class="score-card">
+            <span class="score-label">MinibossATLAS</span>
+            <span class="score-value" id="score-minibossATLAS">0</span>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn-kill" onclick="addPoints(1, 'Kill')">KILL +1</button>
+        <button class="btn-lvl" onclick="addPoints(2, 'Level Up')">LVL UP +2</button>
+        <button class="btn-promo" onclick="addPoints(5, 'Promotion')">PROMO +5</button>
+        <button class="btn-death" onclick="addPoints(-10, 'Death')">DEATH -10</button>
+    </div>
+
+    <div class="bottom-actions">
+        <button class="btn-undo" id="undoBtn" onclick="undo()" disabled>UNDO</button>
+        <button class="btn-wipe" onclick="wipeData()">WIPE DATA</button>
+    </div>
+
+    <details id="history">
+        <summary>History</summary>
+        <div id="history-log"></div>
+    </details>
+</div>
+
+<script>
+const STORAGE_KEY = 'fe4_coop_data';
+
+let data = loadData();
+
+function getDefaultData() {
+    return {
+        mainsqu33ze: 0,
+        minibossATLAS: 0,
+        history: []
+    };
+}
+
+function loadData() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.mainsqu33ze === 'number' && typeof parsed.minibossATLAS === 'number' && Array.isArray(parsed.history)) {
+                return parsed;
+            }
+        }
+    } catch (e) {}
+    return getDefaultData();
+}
+
+function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    render();
+}
+
+function getActivePlayer() {
+    const active = document.querySelector('.toggle-btn.active');
+    return active ? active.dataset.player : 'mainsqu33ze';
+}
+
+function addPoints(points, action) {
+    const player = getActivePlayer();
+    data[player] += points;
+    data.history.push({ player, action, points, time: Date.now() });
+    save();
+}
+
+function undo() {
+    if (data.history.length === 0) return;
+    const last = data.history.pop();
+    data[last.player] -= last.points;
+    save();
+}
+
+function wipeData() {
+    if (confirm('Permanently wipe all points for both players?')) {
+        data = getDefaultData();
+        save();
+    }
+}
+
+function render() {
+    document.getElementById('score-mainsqu33ze').textContent = data.mainsqu33ze;
+    document.getElementById('score-minibossATLAS').textContent = data.minibossATLAS;
+    document.getElementById('undoBtn').disabled = data.history.length === 0;
+
+    const log = document.getElementById('history-log');
+    const reversed = [...data.history].reverse().slice(0, 50);
+    log.innerHTML = reversed.map(e => {
+        const cls = e.points > 0 ? 'pos' : 'neg';
+        const sign = e.points > 0 ? '+' : '';
+        return `<div class="log-entry"><span class="log-player">${e.player}</span><span class="log-action">${e.action}</span><span class="log-points ${cls}">${sign}${e.points}</span></div>`;
+    }).join('');
+}
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+
+render();
+</script>
+</body>
+</html>
