@@ -50,7 +50,7 @@
 
     <div class="toggle-group">
         <button class="toggle-btn active" data-player="mainsqu33ze">mainsqu33ze</button>
-        <button class="toggle-btn" data-player="minibossATLAS">MinibossATLAS</button>
+        <button class="toggle-btn" data-player="KodeKryptik">KodeKryptik</button>
     </div>
 
     <div class="scores">
@@ -59,8 +59,8 @@
             <span class="score-value" id="score-mainsqu33ze">0</span>
         </div>
         <div class="score-card">
-            <span class="score-label">MinibossATLAS</span>
-            <span class="score-value" id="score-minibossATLAS">0</span>
+            <span class="score-label">KodeKryptik</span>
+            <span class="score-value" id="score-KodeKryptik">0</span>
         </div>
     </div>
 
@@ -90,7 +90,7 @@ let data = loadData();
 function getDefaultData() {
     return {
         mainsqu33ze: 0,
-        minibossATLAS: 0,
+        KodeKryptik: 0,
         history: []
     };
 }
@@ -100,7 +100,7 @@ function loadData() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw);
-            if (typeof parsed.mainsqu33ze === 'number' && typeof parsed.minibossATLAS === 'number' && Array.isArray(parsed.history)) {
+            if (typeof parsed.mainsqu33ze === 'number' && typeof parsed.KodeKryptik === 'number' && Array.isArray(parsed.history)) {
                 return parsed;
             }
         }
@@ -141,7 +141,7 @@ function wipeData() {
 
 function render() {
     document.getElementById('score-mainsqu33ze').textContent = data.mainsqu33ze;
-    document.getElementById('score-minibossATLAS').textContent = data.minibossATLAS;
+    document.getElementById('score-KodeKryptik').textContent = data.KodeKryptik;
     document.getElementById('undoBtn').disabled = data.history.length === 0;
 
     const log = document.getElementById('history-log');
