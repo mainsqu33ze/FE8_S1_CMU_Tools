@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Grid</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#111;display:flex;flex-direction:column;align-items:center}
+h1{color:#fff;font-size:1.4rem;padding:15px 0 5px;font-weight:400;letter-spacing:2px;text-transform:uppercase}
+#controls{display:flex;gap:10px;padding:10px;flex-wrap:wrap;justify-content:center;z-index:10}
+#controls input[type=text]{padding:10px 14px;font-size:1rem;border:none;border-radius:6px;background:rgba(255,255,255,0.9);color:#333;width:240px;outline:none}
+#controls input[type=text]:focus{box-shadow:0 0 0 3px rgba(33,150,243,0.5)}
+#controls button{padding:10px 20px;font-size:1rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:0.2s}
+#ab{background:#4CAF50}#ab:hover{background:#45a049}
+#fb{background:#9C27B0}#fb:hover{background:#7B1FA2}
+#rlb{background:#f44336}#rlb:hover{background:#d32f2f}
+#adb{background:#00BCD4}#adb:hover{background:#0097A7}
+#rmb{background:#E91E63}#rmb:hover{background:#C2185B}
+#lb{background:#2196F3}#lb:hover{background:#0b7dda}
+#sb{background:#ff9800}#sb:hover{background:#e68a00}
+#svb{background:#4CAF50}#svb:hover{background:#388E3C}
+#ldb{background:#9C27B0}#ldb:hover{background:#7B1FA2}
+.c{color:rgba(255,255,255,0.5);font-size:.85rem;padding:5px}
+#gw{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:20px;overflow:hidden}
+#fr{position:relative;border:2px solid rgba(255,255,255,0.15);border-radius:8px;background:#1a1a2e;overflow:hidden;display:flex;flex-direction:column}
+#fr .rw{display:flex;flex-direction:row}
+#fr .rw .as{display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.3);font-size:1.5rem;transition:0.2s}
+#fr .rw .as:hover{background:rgba(255,255,255,0.1);color:#fff}
+#fr .cl{position:relative;cursor:pointer;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#222}
+#fr .cl:hover{opacity:.85}
+#fr .cl img{width:100%;height:100%;object-fit:cover;display:block}
+#fr .cl .dl{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;border:none;font-size:12px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1;padding:0}
+#fr .cl:hover .dl{display:flex}
+#fr .cl .dl:hover{background:#f44336}
+#em{color:rgba(255,255,255,0.3);font-size:1.1rem;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center}
+#cols-input{width:55px;padding:8px;font-size:1rem;border:none;border-radius:6px;background:rgba(255,255,255,0.12);color:#fff;text-align:center;outline:none}
+</style>
+</head>
+<body>
+<h1>Image Grid</h1>
+<div id="controls">
+<input type="text" id="ii" placeholder="Paste image URL + Enter">
+<button id="ab">Add</button>
+<button id="fb">Browse Files</button>
+<input type="file" id="fi" accept="image/*" multiple style="display:none">
+<label style="color:rgba(255,255,255,0.5);font-size:.9rem;display:flex;align-items:center;gap:4px">Cols: <input type="number" id="cols-input" min="1" max="20" value="4"></label>
+<button id="rlb">Remove Last</button>
+<button id="adb">Add Row</button>
+<button id="rmb">Remove Row</button>
+<button id="lb">Larger</button>
+<button id="sb">Smaller</button>
+<button id="svb">Save Grid</button>
+<button id="ldb">Load Grid</button>
+<input type="file" id="li" accept=".json" style="display:none">
+</div>
+<div class="c" id="cnt">0 images</div>
+<div id="gw"><div id="fr"><div id="em">Add images to get the started</div></div></div>
+<script>
+let G=[],CS=150,GP=2,CL=4;
+const fr=document.getElementById('fr'),ii=document.getElementById('ii'),ab=document.getElementById('ab'),fb=document.getElementById('fb'),fi=document.getElementById('fi'),ci=document.getElementById('cols-input'),rlb=document.getElementById('rlb'),adb=document.getElementById('adb'),rmb=document.getElementById('rmb'),lb=document.getElementById('lb'),sb=document.getElementById('sb'),svb=document.getElementById('svb'),ldb=document.getElementById('ldb'),li=document.getElementById('li'),cnt=document.getElementById('cnt'),em=document.getElementById('em');
+function fl(){let a=[];for(let r of G)for(let c of r)if(c)a.push(c);return a}
+function render(){
+  fr.innerHTML='';let all=fl();
+  let rs=G.length;
+  if(!rs){fr.appendChild(em);cnt.textContent='0 images';return}
+  fr.style.width=(CL*(CS+GP)-GP)+'px';
+  fr.style.height=(rs*(CS+GP)-GP)+'px';
+  for(let ri=0;ri<rs;ri++){
+    let rd=document.createElement('div');rd.className='rw';
+    let row=G[ri];
+    for(let ci=0;ci<CL;ci++){
+      let src=row[ci];
+      if(src){
+        let c=document.createElement('div');c.className='cl';
+        c.style.width=CS+'px';c.style.height=CS+'px';c.style.margin=GP/2+'px';
+        let im=document.createElement('img');im.src=src;
+        im.onerror=function(){G[ri][ci]=null;sv();render()};
+        c.appendChild(im);
+        let d=document.createElement('button');d.className='dl';d.textContent='x';
+        d.onclick=((i,j)=>e=>{e.stopPropagation();G[i][j]=null;sv();render()})(ri,ci);
+        c.appendChild(d);rd.appendChild(c);
+      }else{
+        let s=document.createElement('div');s.className='as';
+        s.style.width=CS+'px';s.style.height=CS+'px';s.style.margin=GP/2+'px';s.textContent='+';
+        s.onclick=async function(){let u=prompt('Paste image URL:');if(u&&u.trim()){let r=await tryL(u.trim());if(r){G[ri][ci]=r;sv();render()}else alert('Could not load image')}};
+        rd.appendChild(s);
+      }
+    }
+    fr.appendChild(rd);
+  }
+  cnt.textContent=all.length+' image'+(all.length!==1?'s':'');
+}
+function sv(){
+  localStorage.setItem('ig_grid',JSON.stringify(G));
+  localStorage.setItem('ig_size',CS);
+  localStorage.setItem('ig_cols',CL);
+}
+async function tryL(src){return new Promise(r=>{let i=new Image();i.onload=()=>r(src);i.onerror=()=>r(null);i.src=src})}
+async function blobToDataURL(blobUrl){try{let r=await fetch(blobUrl);let b=await r.blob();return new Promise(r2=>{let f=new FileReader();f.onload=()=>r2(f.result);f.readAsDataURL(b)})}catch(e){return null}}
+async function addImg(url){
+  url=url.trim();if(!url)return;
+  let r=await tryL(url);
+  if(!r){alert('Could not load image');return}
+  for(let ri=0;ri<G.length;ri++){for(let ci=0;ci<CL;ci++){if(!G[ri][ci]){G[ri][ci]=r;sv();render();ii.value='';return}}}
+  alert('All slots full. Click "Add Row" first.');
+}
+function loadGrid(){
+  try{
+    let s=localStorage.getItem('ig_size');if(s)CS=parseInt(s,10)||150;
+    let c=localStorage.getItem('ig_cols');if(c)CL=parseInt(c,10)||4;ci.value=CL;
+    let g=localStorage.getItem('ig_grid');
+    if(g){let p=JSON.parse(g);if(Array.isArray(p)&&p.length){G=p;render();return}}
+  }catch(e){}
+}
+ab.onclick=()=>addImg(ii.value);
+ii.onkeydown=e=>{if(e.key==='Enter')addImg(ii.value)};
+fb.onclick=()=>fi.click();
+fi.onchange=async function(){
+  let fs=Array.from(this.files),ad=0;
+  for(let f of fs){
+    let u=URL.createObjectURL(f);
+    let r=await new Promise(r=>{let i=new Image();i.onload=()=>r(u);i.onerror=()=>{URL.revokeObjectURL(u);r(null)};i.src=u});
+    if(r){ad++;let p=false;
+      for(let ri=0;ri<G.length;ri++){for(let ci=0;ci<CL;ci++){if(!G[ri][ci]){G[ri][ci]=r;p=true;break}}if(p)break}
+      if(!p){alert('Grid is full. Add a row for more images.');URL.revokeObjectURL(u);break}
+    }else URL.revokeObjectURL(u)
+  }
+  if(ad){sv();render();ii.focus()}this.value=''
+};
+rlb.onclick=()=>{
+  let a=fl();if(!a.length)return;
+  for(let ri=G.length-1;ri>=0;ri--){for(let ci=CL-1;ci>=0;ci--){if(G[ri][ci]){G[ri][ci]=null;sv();render();return}}}
+};
+adb.onclick=()=>{G.push(new Array(CL).fill(null));sv();render()};
+rmb.onclick=()=>{if(G.length<=1)return;if(G[G.length-1].some(c=>c)&&!confirm('Row has images. Remove anyway?'))return;G.pop();sv();render()};
+lb.onclick=()=>{CS=Math.min(400,CS+20);sv();render()};
+sb.onclick=()=>{CS=Math.max(40,CS-20);sv();render()};
+svb.onclick=async()=>{
+  let promises=G.map(r=>Promise.all(r.map(async c=>{
+    if(c&&c.startsWith('blob:')){let d=await blobToDataURL(c);return d||null}
+    return c
+  })));
+  let encodedG=await Promise.all(promises);
+  let d={grid:encodedG,cols:CL,size:CS};
+  let b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='image_grid.json';a.click();URL.revokeObjectURL(a.href)
+};
+ldb.onclick=()=>li.click();
+li.onchange=async function(){
+  let f=this.files[0];if(!f)return;
+  let txt=await f.text();
+  try{let d=JSON.parse(txt);
+    if(!Array.isArray(d.grid))throw new Error('bad grid');
+    let loaded=d.grid.map(r=>r.map(c=>{
+      if(c&&typeof c==='string'&&c.startsWith('data:')){let i=new Image();i.src=c;return c}
+      return c||null
+    }));
+    G=loaded;CL=d.cols||4;CS=d.size||150;ci.value=CL;sv();render()
+  }catch(err){alert('Invalid grid file')}
+  this.value=''
+};
+ci.onchange=function(){
+  let v=parseInt(this.value,10);
+  if(isNaN(v)||v<1)v=4;if(v>20)v=20;
+  this.value=v;CL=v;
+  for(let ri=0;ri<G.length;ri++){
+    let r=G[ri];
+    if(r.length>CL)r.length=CL;else while(r.length<CL)r.push(null);
+  }
+  sv();render()
+};
+window.onresize=render;
+loadGrid();if(!G.length)G.push(new Array(CL).fill(null));render();
+</script>
+</body>
+</html>

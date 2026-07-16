@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Countdown Timer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;display:flex;align-items:center;justify-content:center}
+#bg{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;background-size:cover;background-position:center;transition:background-image 1s ease}
+#load{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:1.5rem;z-index:1;background:rgba(0,0,0,0.5);padding:20px 30px;border-radius:10px}
+#dark{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;background:rgba(0,0,0,0.4);pointer-events:none}
+.wrap{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:30px;width:100%;max-width:900px;padding:0 20px}
+.t{display:flex;gap:25px;flex-wrap:wrap;justify-content:center;align-items:center}
+.ti{display:flex;flex-direction:column;align-items:center}
+.tn{font-size:7rem;font-weight:800;line-height:1;text-shadow:0 4px 30px rgba(0,0,0,0.6);color:#fff}
+.tl{font-size:.95rem;text-transform:uppercase;letter-spacing:3px;margin-top:6px;color:rgba(255,255,255,0.7);text-shadow:0 1px 4px rgba(0,0,0,0.5)}
+.c{padding-top:6px;font-size:6rem;font-weight:800;color:rgba(255,255,255,0.9);text-shadow:0 4px 20px rgba(0,0,0,0.5);line-height:1}
+.st{font-size:1.6rem;color:#fff;padding:8px 24px;border-radius:30px;background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);text-shadow:0 1px 4px rgba(0,0,0,0.3)}
+.ct{display:flex;gap:12px;margin-top:5px;flex-wrap:wrap;justify-content:center;z-index:20}
+.ct input{padding:10px 16px;font-size:1rem;border:none;border-radius:8px;background:rgba(255,255,255,0.9);color:#333;width:200px;text-align:center;outline:none}
+.ct input:focus{box-shadow:0 0 0 3px rgba(33,150,243,0.5)}
+.ct button{padding:10px 22px;font-size:1rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);color:#fff;transition:0.2s}
+#go{background:#4CAF50;color:#fff}#go:hover{background:#45a049}#go:disabled{opacity:0.6;cursor:default}
+#pa{background:#ff9800;color:#fff}#pa:hover{background:#e68a00}#pa:disabled{opacity:0.4;cursor:default}
+#re{background:#f44336;color:#fff}#re:hover{background:#d32f2f}
+#se{background:#555;color:#fff}#se:hover{background:#444}
+#co{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;background:#fff;padding:30px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.5);min-width:350px;max-width:90vw;max-height:85vh;overflow-y:auto}
+#co.active{display:block}
+#co h2{margin-bottom:5px;color:#333}
+#co p{color:#888;font-size:.9rem;margin-bottom:10px}
+#co h3{margin:15px 0 5px;color:#444;font-size:1rem}
+#co label{display:block;margin:10px 0 4px;font-weight:600;color:#555}
+#co input[type=number],#co input[type=text]{width:100%;padding:8px 12px;font-size:1rem;border:1px solid #ccc;border-radius:6px}
+#co .hint{font-size:.8rem;color:#999;margin-top:3px}
+#co .br{margin-top:20px;display:flex;gap:10px}
+#co .br button{flex:1;padding:10px 0;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:1rem}
+#cim{background:#4CAF50;color:#fff}#cica{background:#ddd;color:#333}
+#cov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99}
+#cov.active{display:block}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="load">Loading images...</div>
+<div id="dark"></div>
+<div id="cov"></div>
+<div class="wrap">
+<div class="t">
+<div class="ti"><span class="tn" id="h">00</span><span class="tl">Hours</span></div>
+<span class="c">:</span>
+<div class="ti"><span class="tn" id="m">00</span><span class="tl">Minutes</span></div>
+<span class="c">:</span>
+<div class="ti"><span class="tn" id="s">00</span><span class="tl">Seconds</span></div>
+</div>
+<div class="st" id="st">Ready</div>
+<div class="ct">
+<input type="text" id="inp" placeholder="e.g. 25:00 or 1:30:00" value="25:00">
+<button id="go">Start</button>
+<button id="pa" disabled>Pause</button>
+<button id="re">Reset</button>
+<button id="se">Settings</button>
+</div>
+</div>
+<div id="co">
+<h2>Settings</h2>
+<p>Configure countdown time and background images.</p>
+<h3>Images</h3>
+<label>Add image URL</label>
+<input type="text" id="imgadd" placeholder="Paste image URL + Enter">
+<div class="hint">Paste a URL to an image file or a directory to auto-discover.</div>
+<label>Current images (<span id="icnt">0</span>)</label>
+<div id="ilist" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0"></div>
+<button id="clr" style="margin-bottom:10px;padding:5px 16px;border-radius:6px;background:#888;color:#fff;border:none;cursor:pointer">Remove all</button>
+<label>Slideshow interval (seconds)</label>
+<input type="number" id="si" min="1" max="600" value="8">
+<label>Darkness overlay (0-99)</label>
+<input type="number" id="da" min="0" max="99" value="40">
+<div class="br">
+<button id="cim">Save</button>
+<button id="cica">Cancel</button>
+</div>
+</div>
+<script>
+let st='idle',tt=0,rem=0,ti=null,imgs=[],ii=0,ii2=null,si=8,da=.4;
+const bg=document.getElementById('bg'),ld=document.getElementById('load'),h=document.getElementById('h'),mn=document.getElementById('m'),sc=document.getElementById('s'),stEl=document.getElementById('st'),inp=document.getElementById('inp'),go=document.getElementById('go'),pa=document.getElementById('pa'),re=document.getElementById('re'),se=document.getElementById('se'),co=document.getElementById('co'),cov=document.getElementById('cov'),siInp=document.getElementById('si'),daInp=document.getElementById('da'),imgadd=document.getElementById('imgadd'),ilist=document.getElementById('ilist'),icnt=document.getElementById('icnt'),clr=document.getElementById('clr'),cim=document.getElementById('cim'),cica=document.getElementById('cica');
+function parseTime(s){s=s.trim();if(!s)return null;let p=s.split(':').map(Number);if(p.some(isNaN)||p.length>3||!p.length)return null;let h=0,mn=0,sc=0;if(p.length==3){h=p[0];mn=p[1];sc=p[2]}else if(p.length==2){mn=p[0];sc=p[1]}else sc=p[0];if(mn>=60||sc>=60)return null;return h*3600+mn*60+sc}
+function fmt(t){let h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return{hh:String(h).padStart(2,'0'),mm:String(m).padStart(2,'0'),ss:String(s).padStart(2,'0')}}
+function setD(t){let f=fmt(t);h.innerText=f.hh;mn.innerText=f.mm;sc.innerText=f.ss}
+function upd(){if(rem<=0){if(ti){clearInterval(ti);ti=null}rem=0;setD(0);stEl.innerText="Time's up!";st='done';go.disabled=false;go.innerText='Start';pa.disabled=true;return}rem--;setD(rem);if(!rem)stEl.innerText="Time's up!"}
+function stopT(){if(ti){clearInterval(ti);ti=null}}
+function startT(){let p=parseTime(inp.value);if(p===null||p<=0){alert('Invalid time. Use HH:MM:SS or MM:SS');return}tt=p;rem=p;setD(rem);st='run';go.disabled=true;go.innerText='Running';pa.disabled=false;pa.innerText='Pause';ti=setInterval(upd,1000);stEl.innerText='Counting down...'}
+function resetF(){stopT();st='idle';tt=0;rem=0;setD(0);go.disabled=false;go.innerText='Start';pa.disabled=true;stEl.innerText='Ready'}
+function pauseF(){if(st==='run'){stopT();st='pau';pa.innerText='Resume';stEl.innerText='Paused'}else if(st==='pau'){st='run';pa.innerText='Pause';stEl.innerText='Counting down...';ti=setInterval(upd,1000)}}
+go.onclick=()=>{if(st==='done'||st==='idle')startT()}
+pa.onclick=()=>{if(st==='run'||st==='pau')pauseF()}
+re.onclick=resetF
+inp.onkeydown=e=>{if(e.key==='Enter'&&(st==='idle'||st==='done'))startT()}
+function tryLoad(src){return new Promise(r=>{let i=new Image();i.onload=()=>r(src);i.onerror=()=>r(null);i.src=src})}
+function getDef(){return['https://picsum.photos/id/1015/800/600','https://picsum.photos/id/1016/800/600','https://picsum.photos/id/1018/800/600','https://picsum.photos/id/1020/800/600','https://picsum.photos/id/1024/800/600','https://picsum.photos/id/1035/800/600','https://picsum.photos/id/1039/800/600','https://picsum.photos/1000/700']}
+function startSlideshow(arr){if(!arr||!arr.length)return;imgs=arr;ii=0;bg.style.backgroundImage='url('+arr[0]+')';ld.style.display='none';if(ii2){clearInterval(ii2);ii2=null}if(arr.length<2)return;ii2=setInterval(()=>{if(!imgs.length)return;ii=(ii+1)%imgs.length;bg.style.backgroundImage='url('+imgs[ii]+')'},si*1000)}
+function renderImgList(){let u=[],s=new Set;for(let x of imgs){let src=typeof x==='string'?x:(x&&x.src?x.src:null);if(src&&!s.has(src)){s.add(src);u.push(src)}}icnt.innerText=u.length;if(!u.length){ilist.innerHTML='<div style="color:#aaa;font-style:italic;padding:10px 0">No images</div>';return}ilist.innerHTML='';for(let url of u){let img=document.createElement('img');img.style.cssText='width:60px;height:60px;object-fit:cover;border-radius:4px;cursor:pointer;border:2px solid transparent';img.src=url;img.title=url;img.dataset.url=url;img.onclick=function(){if(confirm('Remove this image?')){let idx=imgs.indexOf(this.dataset.url);if(idx>-1)imgs.splice(idx,1);if(!imgs.length)imgs=getDef();saveImg();startSlideshow(imgs);renderImgList()}};ilist.appendChild(img)}imgs=u}
+function saveImg(){let arr=imgs.map(x=>typeof x==='string'?x:(x&&x.src?x.src:x)).filter(Boolean);localStorage.setItem('ci',JSON.stringify(arr))}
+function loadImgFromStore(){try{let d=localStorage.getItem('ci');if(d){let p=JSON.parse(d);if(Array.isArray(p)&&p.length)return p}}catch(e){}return null}
+async function discoverDir(dir){if(!dir.match(/^https?:\/\//))return[];let base=dir.replace(/\/+$/,''),urls=[],found=[];for(let i=1;i<=20;i++)urls.push(base+'/'+i+'.jpg');for(let i=1;i<=10;i++)urls.push(base+'/'+i+'.png');let r=await Promise.all(urls.map(u=>tryLoad(u)));for(let x of r)if(x)found.push(x);if(!found.length){let s=await tryLoad(base);if(s)found.push(s)}return found}
+async function loadImgs(){let imgs=loadImgFromStore();if(!imgs||!imgs.length){let dir=localStorage.getItem('cip')||'';if(dir&&dir.trim()){let d=await discoverDir(dir.trim());if(d&&d.length)imgs=d}}if(!imgs||!imgs.length)imgs=getDef();let loaded=[];for(let url of imgs){let r=await tryLoad(url);if(r){loaded.push(r);if(loaded.length>=50)break}}if(!loaded.length){ld.innerText='No images loaded';bg.style.background='#1a1a2e';ld.style.display='none';return}startSlideshow(loaded);renderImgList()}
+function saveConfig(){let si2=parseInt(siInp.value,10),d2=parseInt(daInp.value,10);if(!isNaN(si2)&&si2>0)si=si2;if(!isNaN(d2)&&d2>=0&&d2<=99)da=d2/100;localStorage.setItem('csi',si);localStorage.setItem('cda',da);document.getElementById('dark').style.opacity=da;saveImg();closeC();startSlideshow(imgs)}
+function loadCfg(){let ls=localStorage.getItem('csi'),ld=localStorage.getItem('cda');if(ls)si=parseInt(ls,10);else si=8;if(ld)da=parseFloat(ld);else da=.4;siInp.value=si;daInp.value=Math.round(da*100);document.getElementById('dark').style.opacity=da}
+function closeC(){co.classList.remove('active');co.style.display='none';cov.classList.remove('active');cov.style.display='none'}
+se.onclick=()=>{renderImgList();co.classList.add('active');co.style.display='block';cov.classList.add('active');cov.style.display='block'}
+cov.onclick=closeC
+cim.onclick=saveConfig
+cica.onclick=closeC
+imgadd.onkeydown=async function(e){if(e.key!=='Enter')return;let v=imgadd.value.trim();if(!v)return;if(v.match(/^https?:\/\//)&&!v.match(/\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i)){imgadd.disabled=true;imgadd.value='Searching...';let f=await discoverDir(v);if(f.length){for(let x of f)if(!imgs.includes(x))imgs.push(x);saveImg();startSlideshow(imgs);renderImgList()}else{let r=await tryLoad(v);if(r){imgs.push(r);saveImg();startSlideshow(imgs);renderImgList()}else alert('Could not load from that source')}imgadd.disabled=false;imgadd.value='';return}let r=await tryLoad(v);if(r){imgs.push(r);let u=[],s=new Set;for(let x of imgs){let src=typeof x==='string'?x:(x?x.src||x:'');if(src&&!s.has(src)){s.add(src);u.push(src)}}imgs=u;saveImg();startSlideshow(imgs);renderImgList();imgadd.value=''}else alert('Failed to load image')}
+clr.onclick=function(){if(confirm('Remove all images? Defaults restored.')){imgs=getDef();saveImg();startSlideshow(imgs);renderImgList()}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(ii2){clearInterval(ii2);ii2=null}}else{if(imgs.length>1)startSlideshow(imgs);else if(imgs.length===1){bg.style.backgroundImage='url('+imgs[0]+')';ld.style.display='none'}}})
+loadCfg();loadImgs();
+</script>
+</body>
+</html>
