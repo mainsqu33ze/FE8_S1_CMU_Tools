@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FE Style Crit Counter</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            /* High-quality dark stone fortress texture for the map/background feel */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.75)), url('https://images.unsplash.com/photo-1599740487709-a7e8261a72d8?q=80&w=1200&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f0ebd8;
+        }
+
+        .container {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            width: 90%;
+            max-width: 700px;
+        }
+
+        .counter-card {
+            flex: 1;
+            border-radius: 4px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        /* Player Phase Aesthetic: Deep Blue Canvas & Gold Trim */
+        .player-card { 
+            background-image: linear-gradient(rgba(10, 30, 60, 0.85), rgba(5, 15, 35, 0.95)), url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=400&auto=format&fit=crop');
+            border: 3px solid #d4af37;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.2), 0 10px 25px rgba(0,0,0,0.7);
+        }
+        .player-card h2 {
+            color: #ffd700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* Enemy Phase Aesthetic: Dark Crimson & Silver Trim */
+        .enemy-card { 
+            background-image: linear-gradient(rgba(60, 10, 10, 0.85), rgba(35, 5, 5, 0.95)), url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=400&auto=format&fit=crop');
+            border: 3px solid #b0b0b5;
+            box-shadow: 0 0 15px rgba(176, 176, 181, 0.15), 0 10px 25px rgba(0,0,0,0.7);
+        }
+        .enemy-card h2 {
+            color: #ff6b6b;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        h2 { 
+            margin: 0 0 0.5rem 0; 
+            font-size: 1.8rem; 
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .phase-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 1.5rem;
+            color: #a8a8b3;
+        }
+
+        .count { 
+            font-size: 5rem; 
+            font-weight: bold; 
+            margin: 1rem 0; 
+            font-family: monospace, sans-serif;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.9);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 2px;
+            cursor: pointer;
+            color: #fff;
+            margin-bottom: 0.6rem;
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn:active { transform: translateY(2px); box-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+        /* Button Colors matched to standard combat UI */
+        .btn-player { 
+            background: linear-gradient(#2a6f97, #014f86); 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .btn-player:hover { background: linear-gradient(#3182b5, #014f86); }
+
+        .btn-enemy { 
+            background: linear-gradient(#b7094c, #7209b7); 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .btn-enemy:hover { background: linear-gradient(#c9185b, #7209b7); }
+
+        .btn-sub {
+            background: rgba(0, 0, 0, 0.4);
+            color: #c8c8c8;
+            font-size: 0.9rem;
+            padding: 0.4rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-sub:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+        .reset-box { width: 90%; max-width: 700px; text-align: center; }
+        .btn-reset {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid #d4af37;
+            color: #d4af37;
+            padding: 0.6rem 2rem;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-reset:hover { background-color: #d4af37; color: #000; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Player Counter -->
+        <div class="counter-card player-card">
+            <h2>Player</h2>
+            <div class="phase-label">Player Phase</div>
+            <div class="count" id="player-count">0</div>
+            <button class="btn btn-player" onclick="changeCount('player', 1)">CRITICAL hit</button>
+            <button class="btn btn-sub" onclick="changeCount('player', -1)">Undo</button>
+        </div>
+
+        <!-- Enemy Counter -->
+        <div class="counter-card enemy-card">
+            <h2>Enemy</h2>
+            <div class="phase-label">Enemy Phase</div>
+            <div class="count" id="enemy-count">0</div>
+            <button class="btn btn-enemy" onclick="changeCount('enemy', 1)">CRITICAL hit</button>
+            <button class="btn btn-sub" onclick="changeCount('enemy', -1)">Undo</button>
+        </div>
+    </div>
+
+    <div class="reset-box">
+        <button class="btn-reset" onclick="resetCounters()">Clear Battlefield</button>
+    </div>
+
+    <script>
+        let scores = {
+            player: 0,
+            enemy: 0
+        };
+
+        function changeCount(side, amount) {
+            scores[side] = Math.max(0, scores[side] + amount);
+            document.getElementById(`${side}-count`).innerText = scores[side];
+        }
+
+        function resetCounters() {
+            if(confirm("Reset all battle records?")) {
+                scores.player = 0;
+                scores.enemy = 0;
+                document.getElementById('player-count').innerText = 0;
+                document.getElementById('enemy-count').innerText = 0;
+            }
+        }
+    </script>
+</body>
+</html>
