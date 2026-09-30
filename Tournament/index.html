@@ -201,7 +201,7 @@
             <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-white">Tournament Odds & Win Probability Engine</h2>
-                    <p class="text-sm text-fe-textMuted mt-1">Simulate tournament outcomes using advanced ML classification models, Elo ratings, and historical combat logs.</p>
+                    <p class="text-sm text-fe-textMuted mt-1">Model-based championship forecasts, rescaled through the full tournament path: 3 qualifier rounds, top-24 seeding, and the double-elimination finale.</p>
                 </div>
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
                     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -225,13 +225,13 @@
                 <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-6">
-                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Probability Forecast</span>
+                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Championship Forecast</span>
                             <span id="odds-model-badge" class="text-xs text-fe-textMuted">Model: Logistic Reg.</span>
                         </div>
                         <div class="text-center my-6">
                             <div class="inline-flex items-center justify-center w-28 h-28 rounded-full bg-slate-900 border-4 border-blue-500/30 shadow-2xl relative mb-4">
                                 <span id="odds-percentage-display" class="text-3xl font-extrabold text-white">--</span>
-                                <div class="absolute -bottom-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Win Prob</div>
+                                <div class="absolute -bottom-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Tournament Win Prob</div>
                             </div>
                             <h3 id="odds-unit-name" class="text-xl font-bold text-white">Select a Unit</h3>
                             <p id="odds-unit-class" class="text-xs text-fe-textMuted mt-1">Class & Combat Specialization</p>
@@ -252,7 +252,7 @@
                     <div>
                         <h3 class="font-semibold text-slate-200 text-base flex items-center gap-2 mb-4">
                             <i data-lucide="pie-chart" class="w-4 h-4 text-blue-400"></i>
-                            Key Feature Weight Breakdown & Performance Factors
+                            Championship Path Probability Breakdown
                         </h3>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                             <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
@@ -592,23 +592,66 @@
         }
 
         const MODEL_LABELS = {
-            logistic: 'Logistic Regression',
-            softmax: 'Softmax Composite',
-            elo: 'Elo Rating System (Historical)',
+            logistic: 'Logistic Regression (Tournament Forecast)',
+            softmax: 'Softmax Composite (Tournament Forecast)',
+            elo: 'Elo Rating System (Tournament Forecast)',
             monte_carlo: 'Monte Carlo Simulation'
         };
 
-        function computeModelWinProb(unitRecord, predRecord, selectedModel) {
-            if (selectedModel === 'softmax') return predRecord.softmax_win_prob;
-            if (selectedModel === 'logistic') return predRecord.logistic_win_prob;
+        // Tournament structure used to rescale per-match forecasts into championship
+        // probabilities. Tune these should your format change.
+        const TOURNAMENT_CONFIG = {
+            qualifyRounds: 3,          // qualifier team-match rounds, one match per unit per round
+            qualifyWinsNeeded: 2,      // top 24 of 48 average out to needing >= 2 wins in 3 rounds
+            roundsToFinal12: 3,        // round wins required to reach the final 12
+            eloK: 400                  // Elo scaling constant for match expectancy
+        };
+
+        function clamp01(v) {
+            return Math.min(1, Math.max(0, v));
+        }
+
+        function niceCeil(v, minV) {
+            if (!(v > 0)) return minV || 1;
+            const pow = Math.pow(10, Math.floor(Math.log10(v)));
+            const n = v / pow;
+            const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+            return Math.max(nice * pow, minV || 1);
+        }
+
+        function fmtPct(v) {
+            return Number(v.toFixed(2)).toString();
+        }
+
+        function getMatchProb(unitRecord, predRecord, selectedModel) {
+            if (selectedModel === 'softmax') return (predRecord.softmax_win_prob ?? 0) / 100;
+            if (selectedModel === 'logistic') return (predRecord.logistic_win_prob ?? 0) / 100;
             if (selectedModel === 'elo') {
                 const elos = tournamentData.map(d => d.simulated_elo || 0);
                 const myElo = predRecord.simulated_elo ?? unitRecord.simulated_elo ?? 0;
-                if (!elos.length) return 50;
-                const avgExpectancy = elos.reduce((acc, other) => acc + (1 / (1 + Math.pow(10, (other - myElo) / 400))), 0) / elos.length;
-                return Math.min(99, Math.max(1, avgExpectancy * 100));
+                if (!elos.length) return 0.5;
+                return elos.reduce((acc, other) => acc + (1 / (1 + Math.pow(10, (other - myElo) / TOURNAMENT_CONFIG.eloK))), 0) / elos.length;
             }
-            return predRecord.logistic_win_prob;
+            return (predRecord.logistic_win_prob ?? 0) / 100;
+        }
+
+        function computeChampionshipBreakdown(unitRecord, predRecord, selectedModel) {
+            const p = clamp01(getMatchProb(unitRecord, predRecord, selectedModel));
+            let p2sum = 0;
+            [...new Set(tournamentData.map(d => d.name))].forEach(name => {
+                const u = tournamentData.find(d => d.name === name);
+                if (!u) return;
+                p2sum += Math.pow(clamp01(getMatchProb(u, predictionsData[name] || {}, selectedModel)), 2);
+            });
+
+            const pQualify = p * p * (3 - 2 * p);                     // >= 2 wins out of 3 rounds (top 24 of 48)
+            const pReach12 = Math.pow(p, TOURNAMENT_CONFIG.roundsToFinal12); // 3 round wins to the final 12
+            const deShare = p2sum > 0 ? (p * p) / p2sum : 0;         // squared-strength share of the double-elim finale
+            return { p, pQualify, pReach12, deShare, champ: pQualify * pReach12 * deShare };
+        }
+
+        function computeModelWinProb(unitRecord, predRecord, selectedModel) {
+            return computeChampionshipBreakdown(unitRecord, predRecord, selectedModel).champ * 100;
         }
 
         function getUnitWinProb(unitName, model) {
@@ -633,28 +676,38 @@
 
         function renderOddsHistogram() {
             const model = document.getElementById('odds-model-select').value;
-            const labels = ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'];
-            const bins = Array(labels.length).fill(0);
-            const binUnits = Array.from({ length: labels.length }, () => []);
+            const items = [...new Set(tournamentData.map(d => d.name))]
+                .map(name => ({ name, prob: getUnitWinProb(name, model) }))
+                .filter(it => it.prob >= 0);
 
-            const unitNames = [...new Set(tournamentData.map(d => d.name))];
-            unitNames.forEach(name => {
-                const p = getUnitWinProb(name, model);
-                if (p < 0) return;
-                const idx = Math.min(labels.length - 1, Math.floor(p / 10));
+            // Dynamically size bins from the observed forecast range so low-value
+            // championship probabilities get a meaningful spread instead of one bar.
+            const rawMax = items.reduce((m, it) => Math.max(m, it.prob), 0);
+            const maxVal = niceCeil(rawMax, 1);
+            const numBins = 10;
+            const binWidth = maxVal / numBins;
+
+            const labels = [];
+            const bins = Array(numBins).fill(0);
+            const binUnits = Array.from({ length: numBins }, () => []);
+            for (let i = 0; i < numBins; i++) {
+                labels.push(`${fmtPct(i * binWidth)}-${fmtPct((i + 1) * binWidth)}`);
+            }
+            items.forEach(it => {
+                const idx = Math.min(numBins - 1, Math.floor(it.prob / binWidth));
                 bins[idx]++;
-                binUnits[idx].push(name);
+                binUnits[idx].push(it.name);
             });
 
             document.getElementById('odds-histogram-model-label').innerText = `Model: ${MODEL_LABELS[model] || model}`;
-            document.getElementById('odds-histogram-count').innerText = `${unitNames.length} units`;
+            document.getElementById('odds-histogram-count').innerText = `${items.length} units`;
             document.getElementById('odds-histogram-bin-detail').innerText = 'Click a bar to see the units in that bin.';
 
             const canvasEl = document.getElementById('oddsHistogramChart');
             if (!canvasEl) return;
             if (oddsHistogramInstance) oddsHistogramInstance.destroy();
 
-            const barColors = Array(labels.length).fill('#3b82f6');
+            const barColors = Array(numBins).fill('#3b82f6');
 
             oddsHistogramInstance = new Chart(canvasEl.getContext('2d'), {
                 type: 'bar',
@@ -696,12 +749,15 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (context) => `${context.parsed.y} unit${context.parsed.y === 1 ? '' : 's'}`
+                                label: (context) => {
+                                    const range = labels[context.dataIndex];
+                                    return `${range}%: ${context.parsed.y} unit${context.parsed.y === 1 ? '' : 's'}`;
+                                }
                             }
                         }
                     },
                     scales: {
-                        x: { title: { display: true, text: 'Win Probability (%)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { title: { display: true, text: 'Tournament Win Probability (%)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', maxRotation: 0 } },
                         y: { beginAtZero: true, title: { display: true, text: 'Unit Count', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', precision: 0 } }
                     }
                 }
@@ -716,9 +772,9 @@
             const predRecord = predictionsData[unitName] || {};
             if (!unitRecord) return;
 
-            const winProb = computeModelWinProb(unitRecord, predRecord, selectedModel);
+            const breakdown = computeChampionshipBreakdown(unitRecord, predRecord, selectedModel);
             const modelBadgeText = `Model: ${MODEL_LABELS[selectedModel] || 'Logistic Regression'}`;
-            const displayProb = (winProb === "NaN" || isNaN(winProb) || winProb === undefined) ? 0 : Number(winProb);
+            const displayProb = isNaN(breakdown.champ) ? 0 : breakdown.champ * 100;
 
             // Rank the unit under the active prediction model
             const rankedUnits = [...new Set(tournamentData.map(d => d.name))]
@@ -741,12 +797,20 @@
 document.getElementById('odds-elo-rating').innerText = compositeScore;
             document.getElementById('odds-factors-list').innerHTML = `
                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                    <span class="text-slate-300">Kill-Death Ratio (KDR: ${unitRecord.kdr})</span>
-                    <span class="font-bold text-emerald-400">Active Metric</span>
+                    <span class="text-slate-300">Per-Match Win Probability</span>
+                    <span class="font-bold text-emerald-400">${(breakdown.p * 100).toFixed(1)}%</span>
                 </div>
                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                    <span class="text-slate-300">Accuracy (${(unitRecord.accuracy * 100).toFixed(0)}%)</span>
-                    <span class="font-bold text-blue-400">Active Factor</span>
+                    <span class="text-slate-300">Qualify (Top 24 of 48)</span>
+                    <span class="font-bold text-blue-400">${(breakdown.pQualify * 100).toFixed(1)}%</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                    <span class="text-slate-300">Reach Final 12 (${TOURNAMENT_CONFIG.roundsToFinal12} rounds)</span>
+                    <span class="font-bold text-amber-400">${(breakdown.pReach12 * 100).toFixed(1)}%</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                    <span class="text-slate-300">Double-Elim Championship Share</span>
+                    <span class="font-bold text-slate-200">${(breakdown.deShare * 100).toFixed(1)}%</span>
                 </div>
             `;
 
