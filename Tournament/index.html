@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FE8 CMU Tournament Records</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        fe: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            cardHover: '#334155',
+                            accent: '#3b82f6',
+                            gold: '#f59e0b',
+                            goldHover: '#d97706',
+                            border: '#334155',
+                            textMuted: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-fe-bg text-slate-100 min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="bg-fe-card border-b border-fe-border sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-amber-500 flex items-center justify-center shadow-md shadow-blue-900/30">
+                    <i data-lucide="shield-sword" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        FE8 CMU Tournament Records
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 hidden sm:inline-block">v2.4 Live</span>
+                    </h1>
+                    <p class="text-xs text-fe-textMuted">Advanced Combat Analytics & Predictive Modeling Dashboard</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="openDataModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-fe-cardHover hover:bg-slate-700 text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-all border border-fe-border shadow-sm">
+                    <i data-lucide="database" class="w-4 h-4 text-blue-400"></i>
+                    <span class="hidden md:inline">Data Source / GitHub Pages</span>
+                    <span class="md:hidden">Data</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
+        
+        <!-- Tab Navigation Bar -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-fe-card p-2 rounded-2xl border border-fe-border shadow-md">
+            <nav class="flex flex-wrap gap-2" aria-label="Tabs">
+                <button onclick="switchTab('performers')" id="tab-btn-performers" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                    <i data-lucide="trophy" class="w-4 h-4"></i>
+                    Top 3 Performers
+                </button>
+                <button onclick="switchTab('scatter')" id="tab-btn-scatter" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white hover:bg-fe-cardHover">
+                    <i data-lucide="scatter-chart" class="w-4 h-4"></i>
+                    Scatter Plots
+                </button>
+                <button onclick="switchTab('odds')" id="tab-btn-odds" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white hover:bg-fe-cardHover">
+                    <i data-lucide="trending-up" class="w-4 h-4"></i>
+                    Odds of Winning Tournament
+                </button>
+            </nav>
+            <div id="active-dataset-badge" class="px-4 py-2 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-center justify-between sm:justify-start gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Active Source: <strong class="text-slate-200" id="current-source-label">Embedded Mock JSON</strong></span>
+            </div>
+        </div>
+
+        <!-- TAB 1: Top 3 Performers -->
+        <section id="tab-performers" class="tab-content flex flex-col gap-6 animate-fadeIn">
+            <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Top 3 Elite Performers</h2>
+                    <p class="text-sm text-fe-textMuted mt-1">Review top fighters ranked by tournament stage with KDR, Dodge Ratio, and Crit Ratio analytics.</p>
+                </div>
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <label for="stage-select" class="text-sm font-medium text-slate-300 whitespace-nowrap">Stage Filter:</label>
+                    <select id="stage-select" onchange="renderPerformers()" class="w-full md:w-56 bg-slate-900 border border-fe-border text-slate-100 text-sm rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-inner">
+                        <option value="Stage 1">Stage 1</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Top 3 Podium Cards & Table Container -->
+            <div id="performers-container" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+
+            <!-- Detailed Stage Table -->
+            <div class="bg-fe-card rounded-2xl border border-fe-border shadow-xl overflow-hidden mt-2">
+                <div class="px-6 py-4 border-b border-fe-border bg-slate-900/40 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-200 text-sm flex items-center gap-2">
+                        <i data-lucide="list-ordered" class="w-4 h-4 text-amber-400"></i>
+                        Stage Detailed Breakdown
+                    </h3>
+                    <span id="stage-record-count" class="text-xs text-fe-textMuted">Showing top units</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-fe-border text-xs uppercase tracking-wider text-fe-textMuted bg-slate-900/60">
+                                <th class="px-6 py-3 font-semibold">Rank & Unit</th>
+                                <th class="px-6 py-3 font-semibold">ELO Rating</th>
+                                <th class="px-6 py-3 font-semibold">Wins</th>
+                                <th class="px-6 py-3 font-semibold">Kill-Death Ratio (KDR)</th>
+                                <th class="px-6 py-3 font-semibold">Dodge Ratio (%)</th>
+                                <th class="px-6 py-3 font-semibold">Crit Ratio (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="performers-table-body" class="divide-y divide-fe-border text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Scatter Plots -->
+        <section id="tab-scatter" class="tab-content hidden flex flex-col gap-6 animate-fadeIn">
+            <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Performance Correlation Scatter Plots</h2>
+                    <p class="text-sm text-fe-textMuted mt-1">Analyze combat effectiveness and core trade-offs across tournament rounds and metrics.</p>
+                </div>
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <label for="scatter-round" class="text-sm font-medium text-slate-300 whitespace-nowrap">Round:</label>
+                        <select id="scatter-round" onchange="renderScatterPlot()" class="w-full sm:w-44 bg-slate-900 border border-fe-border text-slate-100 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="All">All Rounds Combined</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <label for="scatter-metric" class="text-sm font-medium text-slate-300 whitespace-nowrap">Metric Pair:</label>
+                        <select id="scatter-metric" onchange="renderScatterPlot()" class="w-full sm:w-56 bg-slate-900 border border-fe-border text-slate-100 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="kdr_vs_dodge">KDR vs Dodge Ratio</option>
+                            <option value="kdr_vs_crit">KDR vs Crit Ratio</option>
+                            <option value="battles_vs_wins">Battles vs Total Wins</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Container -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="scatter-chart-title" class="font-semibold text-slate-200 text-base">Combat Metric Distribution</h3>
+                        <span class="text-xs text-fe-textMuted bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">Interactive Scatter View</span>
+                    </div>
+                    <div class="relative w-full h-[380px] sm:h-[420px]">
+                        <canvas id="performanceScatterChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Scatter Insight Panel -->
+                <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-semibold text-slate-200 text-base flex items-center gap-2 mb-3">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                            Statistical Insights
+                        </h3>
+                        <p id="scatter-insight-text" class="text-sm text-slate-300 leading-relaxed mb-6">
+                            Select metrics and rounds to examine combat cluster distributions. Units in the upper-right quadrant demonstrate optimal dual-threat capabilities.
+                        </p>
+                        <div class="space-y-3">
+                            <div class="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                                <span class="text-xs text-fe-textMuted block mb-1">Dataset Sample Size</span>
+                                <span id="insight-sample-size" class="text-sm font-semibold text-slate-200">Active Tournament Units</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Odds of Winning Tournament -->
+        <section id="tab-odds" class="tab-content hidden flex flex-col gap-6 animate-fadeIn">
+            <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Tournament Odds & Win Probability Engine</h2>
+                    <p class="text-sm text-fe-textMuted mt-1">Simulate tournament outcomes using advanced ML classification models, Elo ratings, and historical combat logs.</p>
+                </div>
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <label for="odds-unit-select" class="text-sm font-medium text-slate-300 whitespace-nowrap">Unit:</label>
+                        <select id="odds-unit-select" onchange="renderOdds()" class="w-full sm:w-48 bg-slate-900 border border-fe-border text-slate-100 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <label for="odds-model-select" class="text-sm font-medium text-slate-300 whitespace-nowrap">Model:</label>
+                        <select id="odds-model-select" onchange="renderOdds()" class="w-full sm:w-52 bg-slate-900 border border-fe-border text-slate-100 text-sm rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="logistic">Logistic Regression (Balanced)</option>
+                            <option value="softmax">Softmax Composite Model</option>
+                            <option value="elo">Elo Rating System (Historical)</option>   
+                        <!-- <option value="monte_carlo">Combat Monte Carlo Simulation (10k)</option> -->    
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Odds Breakdown Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-6">
+                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Probability Forecast</span>
+                            <span id="odds-model-badge" class="text-xs text-fe-textMuted">Model: Logistic Reg.</span>
+                        </div>
+                        <div class="text-center my-6">
+                            <div class="inline-flex items-center justify-center w-28 h-28 rounded-full bg-slate-900 border-4 border-blue-500/30 shadow-2xl relative mb-4">
+                                <span id="odds-percentage-display" class="text-3xl font-extrabold text-white">--</span>
+                                <div class="absolute -bottom-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Win Prob</div>
+                            </div>
+                            <h3 id="odds-unit-name" class="text-xl font-bold text-white">Select a Unit</h3>
+                            <p id="odds-unit-class" class="text-xs text-fe-textMuted mt-1">Class & Combat Specialization</p>
+                        </div>
+                        <div class="space-y-2 mt-4">
+                            <div class="flex justify-between text-xs font-medium">
+                                <span class="text-fe-textMuted">Championship Probability Bar</span>
+                                <span id="odds-bar-text" class="text-amber-400 font-bold">--%</span>
+                            </div>
+                            <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                                <div id="odds-progress-bar" class="bg-gradient-to-r from-blue-500 to-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-semibold text-slate-200 text-base flex items-center gap-2 mb-4">
+                            <i data-lucide="pie-chart" class="w-4 h-4 text-blue-400"></i>
+                            Key Feature Weight Breakdown & Performance Factors
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold">
+                                    <i data-lucide="zap" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-fe-textMuted block">CMU Unit Rating (R)</span>
+                                    <span id="odds-hist-winrate" class="text-lg font-bold text-slate-100">--</span>
+                                </div>
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold">
+                                    <i data-lucide="shield" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-fe-textMuted block">Simulated Elo Rating</span>
+                                    <span id="odds-elo-rating" class="text-lg font-bold text-slate-100">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 class="text-xs uppercase tracking-wider text-fe-textMuted font-semibold mb-3">Model Prediction Factors</h4>
+                        <div id="odds-factors-list" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Data Source Modal -->
+    <div id="data-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden animate-fadeIn">
+        <div class="bg-fe-card border border-fe-border w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden m-4">
+            <div class="px-6 py-4 border-b border-fe-border flex items-center justify-between bg-slate-900/60">
+                <h3 class="font-bold text-white text-base flex items-center gap-2">
+                    <i data-lucide="database" class="w-5 h-5 text-blue-400"></i>
+                    Data Source & GitHub Pages Configuration
+                </h3>
+                <button onclick="closeDataModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-5 text-sm text-slate-300 max-h-[75vh] overflow-y-auto">
+                <p>Dashboard loaded dynamically via `data.json` generated by your R pipeline.</p>
+            </div>
+            <div class="px-6 py-4 border-t border-fe-border bg-slate-900/60 flex justify-end">
+                <button onclick="closeDataModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all">
+                    Close Window
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script Logic -->
+    <script>
+        let tournamentData = [];
+        let predictionsData = {};
+        let scatterChartInstance = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadTournamentDataFromRepo();
+        });
+
+        function initDashboard() {
+            populateUnitDropdowns();
+            renderPerformers();
+            renderScatterPlot();
+            renderOdds();
+        }
+
+        function switchTab(tabId) {
+            const tabs = ['performers', 'scatter', 'odds'];
+            tabs.forEach(t => {
+                const content = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabId) {
+                    content.classList.remove('hidden');
+                    btn.className = "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/30";
+                } else {
+                    content.classList.add('hidden');
+                    btn.className = "flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white hover:bg-fe-cardHover";
+                }
+            });
+            if (tabId === 'scatter' && scatterChartInstance) {
+                scatterChartInstance.resize();
+            }
+        }
+
+        async function loadTournamentDataFromRepo() {
+            try {
+                const response = await fetch('./data.json');
+                if (!response.ok) throw new Error('data.json not found in directory');
+        
+                const jsonData = await response.json();
+                
+                // Map scatter data for charts and tables
+                if (jsonData && jsonData.scatter_data) {
+                    tournamentData = jsonData.scatter_data.map((item, index) => ({
+                        id: index + 1,
+                        name: item.Unit,
+                        class: "Combat Unit",
+                        stage: `Stage ${item.Stage}`,
+                        round: `Round ${item.Round}`,
+                        kdr: item.kdr,
+                        dodge: item.dodge_ratio || 0,
+                        crit: item.crit_ratio || 0,
+                        battles: (item.total_attacks_made || 0) + (item.total_attacks_against || 0),
+                        wins: item.Win,
+                        rating: item.Rating || index + 1,
+                        accuracy: item.accuracy || 0,
+                        raw_score: item.raw_score || 0,
+                        softmax_win_prob: item.softmax_win_prob,
+                        logistic_win_prob: item.logistic_win_prob,
+                        simulated_elo: item.simulated_elo || 0
+                    }));
+                }
+
+                // Map predictions structure indexed by Unit name for fast lookup in Tab 3
+                if (jsonData && jsonData.predictions && jsonData.predictions.Unit) {
+                    predictionsData = {};
+                    const units = jsonData.predictions.Unit;
+                    units.forEach((unitName, idx) => {
+                        predictionsData[unitName] = {
+                            kdr: jsonData.predictions.kdr[idx],
+                            accuracy: jsonData.predictions.accuracy[idx],
+                            crit_ratio: jsonData.predictions.crit_ratio[idx],
+                            dodge_ratio: jsonData.predictions.dodge_ratio[idx],
+                            rating: jsonData.predictions.Rating[idx],
+                            softmax_win_prob: jsonData.predictions.softmax_win_prob[idx],
+                            logistic_win_prob: jsonData.predictions.logistic_win_prob[idx],
+                            simulated_elo: jsonData.predictions.simulated_elo[idx]
+                        };
+                    });
+                }
+
+                document.getElementById('current-source-label').innerText = 'Live data.json Loaded';
+                initDashboard();
+            } catch (err) {
+                console.log('Using default mock dataset (data.json not detected locally or via file:// protocol).', err);
+                initDashboard();
+            }
+        }
+
+        function renderPerformers() {
+            const stage = document.getElementById('stage-select').value;
+            const filtered = tournamentData.filter(d => d.stage === stage);
+            
+            filtered.sort((a, b) => b.kdr - a.kdr);
+            const top3 = filtered.slice(0, 3);
+
+            const container = document.getElementById('performers-container');
+            container.innerHTML = '';
+
+            const medals = [
+                { bg: 'from-amber-500/20 to-amber-600/5', border: 'border-amber-500/40', text: 'text-amber-400', badge: 'bg-amber-500 text-slate-950', label: '1st Place Elite' },
+                { bg: 'from-slate-400/20 to-slate-500/5', border: 'border-slate-400/40', text: 'text-slate-300', badge: 'bg-slate-300 text-slate-950', label: '2nd Place Runner-Up' },
+                { bg: 'from-amber-700/20 to-amber-800/5', border: 'border-amber-700/40', text: 'text-amber-600', badge: 'bg-amber-700 text-white', label: '3rd Place Finalist' }
+            ];
+
+            top3.forEach((unit, index) => {
+                const medal = medals[index] || medals[2];
+                const dodgeVal = isNaN(unit.dodge) ? 'N/A' : `${unit.dodge.toFixed(1)}%`;
+                container.innerHTML += `
+                    <div class="bg-gradient-to-b ${medal.bg} border ${medal.border} p-6 rounded-2xl shadow-xl flex flex-col justify-between relative overflow-hidden backdrop-blur-sm">
+                        <div class="absolute top-4 right-4 px-2.5 py-1 rounded-full text-xs font-extrabold ${medal.badge} shadow-md">
+                            #${index + 1}
+                        </div>
+                        <div>
+                            <span class="text-xs uppercase font-semibold tracking-wider text-fe-textMuted">${medal.label}</span>
+                            <h3 class="text-2xl font-bold text-white mt-1">${unit.name}</h3>
+                            <p class="text-xs text-blue-400 font-medium mb-4">Predicted Ranking: #${unit.rating}</p>
+
+                            <div class="space-y-3 pt-2 border-t border-fe-border/60">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-fe-textMuted">Kill-Death Ratio</span>
+                                    <span class="text-sm font-extrabold text-emerald-400">${unit.kdr.toFixed(2)}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-fe-textMuted">Dodge Ratio</span>
+                                    <span class="text-sm font-bold text-slate-200">${dodgeVal}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-fe-textMuted">Crit Ratio</span>
+                                    <span class="text-sm font-bold text-slate-200">${unit.crit.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const tbody = document.getElementById('performers-table-body');
+            tbody.innerHTML = '';
+            filtered.forEach((unit, idx) => {
+                const dodgeVal = isNaN(unit.dodge) ? 'N/A' : `${unit.dodge.toFixed(1)}%`;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/40 transition-colors">
+                        <td class="px-6 py-4 font-medium text-white flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-700">${idx + 1}</span>
+                            ${unit.name}
+                        </td>
+                        <td class="px-6 py-4 text-blue-400 font-medium">Rank #${unit.rating}</td>
+                        <td class="px-6 py-4 text-slate-300">${unit.wins}W</td>
+                        <td class="px-6 py-4 font-bold text-emerald-400">${unit.kdr.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-slate-200">${dodgeVal}</td>
+                        <td class="px-6 py-4 text-slate-200">${unit.crit.toFixed(1)}%</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('stage-record-count').innerText = `Showing ${filtered.length} units`;
+            lucide.createIcons();
+        }
+
+        function renderScatterPlot() {
+            const metricPair = document.getElementById('scatter-metric').value;
+            let scatterPoints = tournamentData.map(d => ({
+                x: metricPair === 'kdr_vs_crit' ? d.crit : metricPair === 'battles_vs_wins' ? d.battles : (isNaN(d.dodge) ? 0 : d.dodge),
+                y: metricPair === 'battles_vs_wins' ? d.wins : d.kdr,
+                name: d.name
+            }));
+
+            let xLabel = metricPair === 'kdr_vs_crit' ? 'Crit Ratio (%)' : metricPair === 'battles_vs_wins' ? 'Total Battles' : 'Dodge Ratio (%)';
+            let yLabel = metricPair === 'battles_vs_wins' ? 'Tournament Wins' : 'Kill-Death Ratio (KDR)';
+
+            const ctx = document.getElementById('performanceScatterChart').getContext('2d');
+            if (scatterChartInstance) scatterChartInstance.destroy();
+
+            scatterChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        data: scatterPoints,
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2,
+                        pointRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = scatterPoints[context.dataIndex];
+                                    return `${point.name}: (${xLabel}: ${point.x}, ${yLabel}: ${point.y})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: xLabel, color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: yLabel, color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+            document.getElementById('insight-sample-size').innerText = `${scatterPoints.length} Units Analyzed`;
+        }
+
+        function populateUnitDropdowns() {
+            const unitNames = [...new Set(tournamentData.map(d => d.name))];
+            const selectEl = document.getElementById('odds-unit-select');
+            selectEl.innerHTML = '';
+            unitNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                selectEl.appendChild(opt);
+            });
+            renderOdds();
+        }
+
+        function renderOdds() {
+            const unitName = document.getElementById('odds-unit-select').value || tournamentData[0]?.name;
+            const selectedModel = document.getElementById('odds-model-select').value; 
+            const unitRecord = tournamentData.find(d => d.name === unitName);
+            const predRecord = predictionsData[unitName] || {};
+            if (!unitRecord) return;
+
+            let winProb = 0;
+            let modelBadgeText = '';
+
+            // Correctly evaluate the selected model dropdown value
+            if (selectedModel === 'softmax') {
+                winProb = predRecord.softmax_win_prob;
+                modelBadgeText = 'Model: Softmax Composite';
+            } else if (selectedModel === 'logistic') {
+                winProb = predRecord.logistic_win_prob;
+                modelBadgeText = 'Model: Logistic Regression';
+            } else if (selectedModel === 'elo') {
+                // Fallback or specific mapping for Elo if stored elsewhere, e.g., unitRecord.rating
+                winProb = unitRecord.rating ? Math.min(100, Math.max(0, 100 - (unitRecord.rating * 5))) : 50;
+                modelBadgeText = 'Model: Elo Rating System';
+            } else {
+                // Monte Carlo or general fallback
+                winProb = predRecord.logistic_win_prob;
+                modelBadgeText = 'Model: Monte Carlo Simulation';
+            }
+
+            const displayProb = (winProb === "NaN" || isNaN(winProb) || winProb === undefined) ? 0 : Number(winProb);
+
+            // Grabbing stuff
+            document.getElementById('odds-model-badge').innerText = modelBadgeText;
+            document.getElementById('odds-percentage-display').innerText = `${displayProb.toFixed(2)}%`;
+            document.getElementById('odds-bar-text').innerText = `${displayProb.toFixed(2)}%`;
+            document.getElementById('odds-progress-bar').style.width = `${Math.min(Math.max(displayProb, 0), 100)}%`;
+            document.getElementById('odds-unit-name').innerText = unitName;
+            document.getElementById('odds-unit-class').innerText = `Rating Rank: #${unitRecord.rating}`;
+            document.getElementById('odds-hist-winrate').innerText = `#${predRecord.rating || unitRecord.rating}`;
+            // Grab the pre-calculated Elo straight from predictions or unitRecord
+            const compositeScore = predRecord.simulated_elo ?? unitRecord.simulated_elo ?? 0;
+
+document.getElementById('odds-elo-rating').innerText = compositeScore;
+            document.getElementById('odds-factors-list').innerHTML = `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                    <span class="text-slate-300">Kill-Death Ratio (KDR: ${unitRecord.kdr})</span>
+                    <span class="font-bold text-emerald-400">Active Metric</span>
+                </div>
+                <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
+                    <span class="text-slate-300">Accuracy (${(unitRecord.accuracy * 1000).toFixed(0)})</span>
+                    <span class="font-bold text-blue-400">Active Factor</span>
+                </div>
+            `;
+        }
+
+        function openDataModal() { document.getElementById('data-modal').classList.remove('hidden'); }
+        function closeDataModal() { document.getElementById('data-modal').classList.add('hidden'); }
+    </script>
+</body>
+</html>
