@@ -279,6 +279,26 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Win Probability Distribution Histogram -->
+            <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-slate-200 text-base flex items-center gap-2">
+                        <i data-lucide="bar-chart" class="w-4 h-4 text-amber-400"></i>
+                        Predicted Win Probability Distribution
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <span id="odds-histogram-count" class="text-xs text-fe-textMuted bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">-- units</span>
+                        <span id="odds-histogram-model-label" class="text-xs text-fe-textMuted bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">Model: --</span>
+                    </div>
+                </div>
+                <div class="relative w-full h-[280px]">
+                    <canvas id="oddsHistogramChart"></canvas>
+                </div>
+                <div id="odds-histogram-bin-detail" class="mt-4 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-sm text-fe-textMuted">
+                    Click a bar to see the units in that bin.
+                </div>
+            </div>
         </section>
 
     </main>
@@ -310,7 +330,9 @@
     <script>
         let tournamentData = [];
         let predictionsData = {};
+        let stageMeta = [];
         let scatterChartInstance = null;
+        let oddsHistogramInstance = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -318,6 +340,8 @@
         });
 
         function initDashboard() {
+            populateStageDropdown();
+            populateRoundDropdown();
             populateUnitDropdowns();
             renderPerformers();
             renderScatterPlot();
@@ -340,6 +364,9 @@
             if (tabId === 'scatter' && scatterChartInstance) {
                 scatterChartInstance.resize();
             }
+            if (tabId === 'odds' && oddsHistogramInstance) {
+                oddsHistogramInstance.resize();
+            }
         }
 
         async function loadTournamentDataFromRepo() {
@@ -348,7 +375,9 @@
                 if (!response.ok) throw new Error('data.json not found in directory');
         
                 const jsonData = await response.json();
-                
+
+                stageMeta = jsonData.stages || [];
+
                 // Map scatter data for charts and tables
                 if (jsonData && jsonData.scatter_data) {
                     tournamentData = jsonData.scatter_data.map((item, index) => ({
@@ -401,7 +430,7 @@
             const stage = document.getElementById('stage-select').value;
             const filtered = tournamentData.filter(d => d.stage === stage);
             
-            filtered.sort((a, b) => b.kdr - a.kdr);
+            filtered.sort((a, b) => (b.raw_score ?? b.kdr) - (a.raw_score ?? a.kdr));
             const top3 = filtered.slice(0, 3);
 
             const container = document.getElementById('performers-container');
@@ -424,7 +453,7 @@
                         <div>
                             <span class="text-xs uppercase font-semibold tracking-wider text-fe-textMuted">${medal.label}</span>
                             <h3 class="text-2xl font-bold text-white mt-1">${unit.name}</h3>
-                            <p class="text-xs text-blue-400 font-medium mb-4">Predicted Ranking: #${unit.rating}</p>
+                            <p class="text-xs text-blue-400 font-medium mb-4">ELO Rating: ${unit.simulated_elo}</p>
 
                             <div class="space-y-3 pt-2 border-t border-fe-border/60">
                                 <div class="flex items-center justify-between">
@@ -455,7 +484,7 @@
                             <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-700">${idx + 1}</span>
                             ${unit.name}
                         </td>
-                        <td class="px-6 py-4 text-blue-400 font-medium">Rank #${unit.rating}</td>
+                        <td class="px-6 py-4 text-blue-400 font-medium">${unit.simulated_elo}</td>
                         <td class="px-6 py-4 text-slate-300">${unit.wins}W</td>
                         <td class="px-6 py-4 font-bold text-emerald-400">${unit.kdr.toFixed(2)}</td>
                         <td class="px-6 py-4 text-slate-200">${dodgeVal}</td>
@@ -469,7 +498,9 @@
 
         function renderScatterPlot() {
             const metricPair = document.getElementById('scatter-metric').value;
-            let scatterPoints = tournamentData.map(d => ({
+            const round = document.getElementById('scatter-round').value;
+            const roundFiltered = round === 'All' ? tournamentData : tournamentData.filter(d => d.round === round);
+            let scatterPoints = roundFiltered.map(d => ({
                 x: metricPair === 'kdr_vs_crit' ? d.crit : metricPair === 'battles_vs_wins' ? d.battles : (isNaN(d.dodge) ? 0 : d.dodge),
                 y: metricPair === 'battles_vs_wins' ? d.wins : d.kdr,
                 name: d.name
@@ -515,6 +546,36 @@
             document.getElementById('insight-sample-size').innerText = `${scatterPoints.length} Units Analyzed`;
         }
 
+        function populateStageDropdown() {
+            const selectEl = document.getElementById('stage-select');
+            const stages = stageMeta.length
+                ? stageMeta.map(s => `Stage ${s.stage}`)
+                : [...new Set(tournamentData.map(d => d.stage))];
+            selectEl.innerHTML = '';
+            stages.forEach(stage => {
+                const opt = document.createElement('option');
+                opt.value = stage;
+                opt.innerText = stage;
+                selectEl.appendChild(opt);
+            });
+        }
+
+        function populateRoundDropdown() {
+            const selectEl = document.getElementById('scatter-round');
+            const rounds = [...new Set(tournamentData.map(d => d.round))];
+            selectEl.innerHTML = '';
+            const allOpt = document.createElement('option');
+            allOpt.value = 'All';
+            allOpt.innerText = 'All Rounds Combined';
+            selectEl.appendChild(allOpt);
+            rounds.forEach(round => {
+                const opt = document.createElement('option');
+                opt.value = round;
+                opt.innerText = round;
+                selectEl.appendChild(opt);
+            });
+        }
+
         function populateUnitDropdowns() {
             const unitNames = [...new Set(tournamentData.map(d => d.name))];
             const selectEl = document.getElementById('odds-unit-select');
@@ -525,37 +586,146 @@
                 opt.innerText = name;
                 selectEl.appendChild(opt);
             });
+            sortUnitDropdown();
+            selectEl.selectedIndex = 0;
             renderOdds();
         }
 
+        const MODEL_LABELS = {
+            logistic: 'Logistic Regression',
+            softmax: 'Softmax Composite',
+            elo: 'Elo Rating System (Historical)',
+            monte_carlo: 'Monte Carlo Simulation'
+        };
+
+        function computeModelWinProb(unitRecord, predRecord, selectedModel) {
+            if (selectedModel === 'softmax') return predRecord.softmax_win_prob;
+            if (selectedModel === 'logistic') return predRecord.logistic_win_prob;
+            if (selectedModel === 'elo') {
+                const elos = tournamentData.map(d => d.simulated_elo || 0);
+                const myElo = predRecord.simulated_elo ?? unitRecord.simulated_elo ?? 0;
+                if (!elos.length) return 50;
+                const avgExpectancy = elos.reduce((acc, other) => acc + (1 / (1 + Math.pow(10, (other - myElo) / 400))), 0) / elos.length;
+                return Math.min(99, Math.max(1, avgExpectancy * 100));
+            }
+            return predRecord.logistic_win_prob;
+        }
+
+        function getUnitWinProb(unitName, model) {
+            const unitRecord = tournamentData.find(d => d.name === unitName);
+            const predRecord = predictionsData[unitName] || {};
+            if (!unitRecord) return -1;
+            return computeModelWinProb(unitRecord, predRecord, model);
+        }
+
+        function sortUnitDropdown() {
+            const selectEl = document.getElementById('odds-unit-select');
+            const model = document.getElementById('odds-model-select').value;
+            const options = Array.from(selectEl.options);
+            options.sort((a, b) => {
+                const diff = getUnitWinProb(b.value, model) - getUnitWinProb(a.value, model);
+                return diff !== 0 ? diff : a.text.localeCompare(b.text);
+            });
+            const current = selectEl.value;
+            options.forEach(opt => selectEl.appendChild(opt));
+            selectEl.value = current;
+        }
+
+        function renderOddsHistogram() {
+            const model = document.getElementById('odds-model-select').value;
+            const labels = ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'];
+            const bins = Array(labels.length).fill(0);
+            const binUnits = Array.from({ length: labels.length }, () => []);
+
+            const unitNames = [...new Set(tournamentData.map(d => d.name))];
+            unitNames.forEach(name => {
+                const p = getUnitWinProb(name, model);
+                if (p < 0) return;
+                const idx = Math.min(labels.length - 1, Math.floor(p / 10));
+                bins[idx]++;
+                binUnits[idx].push(name);
+            });
+
+            document.getElementById('odds-histogram-model-label').innerText = `Model: ${MODEL_LABELS[model] || model}`;
+            document.getElementById('odds-histogram-count').innerText = `${unitNames.length} units`;
+            document.getElementById('odds-histogram-bin-detail').innerText = 'Click a bar to see the units in that bin.';
+
+            const canvasEl = document.getElementById('oddsHistogramChart');
+            if (!canvasEl) return;
+            if (oddsHistogramInstance) oddsHistogramInstance.destroy();
+
+            const barColors = Array(labels.length).fill('#3b82f6');
+
+            oddsHistogramInstance = new Chart(canvasEl.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Units',
+                        data: bins,
+                        backgroundColor: barColors,
+                        borderColor: '#60a5fa',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (event, elements, chart) => {
+                        const detailEl = document.getElementById('odds-histogram-bin-detail');
+                        if (!detailEl) return;
+                        if (!elements.length) {
+                            barColors.fill('#3b82f6');
+                            chart.update();
+                            detailEl.innerText = 'Click a bar to see the units in that bin.';
+                            return;
+                        }
+                        const idx = elements[0].index;
+                        barColors.forEach((c, i) => { barColors[i] = i === idx ? '#f59e0b' : '#3b82f6'; });
+                        chart.update();
+                        const range = labels[idx];
+                        const units = binUnits[idx];
+                        if (!units.length) {
+                            detailEl.innerHTML = `No units fall in the <strong>${range}%</strong> range.`;
+                        } else {
+                            detailEl.innerHTML = `<span class="text-fe-textMuted">Units in <strong class="text-amber-400">${range}%</strong> range:</span> <span class="text-slate-200">${units.join(', ')}</span>`;
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.parsed.y} unit${context.parsed.y === 1 ? '' : 's'}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Win Probability (%)', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Unit Count', color: '#94a3b8' }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', precision: 0 } }
+                    }
+                }
+            });
+        }
+
         function renderOdds() {
+            sortUnitDropdown();
             const unitName = document.getElementById('odds-unit-select').value || tournamentData[0]?.name;
             const selectedModel = document.getElementById('odds-model-select').value; 
             const unitRecord = tournamentData.find(d => d.name === unitName);
             const predRecord = predictionsData[unitName] || {};
             if (!unitRecord) return;
 
-            let winProb = 0;
-            let modelBadgeText = '';
-
-            // Correctly evaluate the selected model dropdown value
-            if (selectedModel === 'softmax') {
-                winProb = predRecord.softmax_win_prob;
-                modelBadgeText = 'Model: Softmax Composite';
-            } else if (selectedModel === 'logistic') {
-                winProb = predRecord.logistic_win_prob;
-                modelBadgeText = 'Model: Logistic Regression';
-            } else if (selectedModel === 'elo') {
-                // Fallback or specific mapping for Elo if stored elsewhere, e.g., unitRecord.rating
-                winProb = unitRecord.rating ? Math.min(100, Math.max(0, 100 - (unitRecord.rating * 5))) : 50;
-                modelBadgeText = 'Model: Elo Rating System';
-            } else {
-                // Monte Carlo or general fallback
-                winProb = predRecord.logistic_win_prob;
-                modelBadgeText = 'Model: Monte Carlo Simulation';
-            }
-
+            const winProb = computeModelWinProb(unitRecord, predRecord, selectedModel);
+            const modelBadgeText = `Model: ${MODEL_LABELS[selectedModel] || 'Logistic Regression'}`;
             const displayProb = (winProb === "NaN" || isNaN(winProb) || winProb === undefined) ? 0 : Number(winProb);
+
+            // Rank the unit under the active prediction model
+            const rankedUnits = [...new Set(tournamentData.map(d => d.name))]
+                .map(name => ({ name, prob: getUnitWinProb(name, selectedModel) }))
+                .filter(r => r.prob >= 0)
+                .sort((a, b) => b.prob - a.prob);
+            const modelRank = rankedUnits.findIndex(r => r.name === unitName) + 1 || '--';
 
             // Grabbing stuff
             document.getElementById('odds-model-badge').innerText = modelBadgeText;
@@ -563,8 +733,8 @@
             document.getElementById('odds-bar-text').innerText = `${displayProb.toFixed(2)}%`;
             document.getElementById('odds-progress-bar').style.width = `${Math.min(Math.max(displayProb, 0), 100)}%`;
             document.getElementById('odds-unit-name').innerText = unitName;
-            document.getElementById('odds-unit-class').innerText = `Rating Rank: #${unitRecord.rating}`;
-            document.getElementById('odds-hist-winrate').innerText = `#${predRecord.rating || unitRecord.rating}`;
+            document.getElementById('odds-unit-class').innerText = `Model Rank: #${modelRank}`;
+            document.getElementById('odds-hist-winrate').innerText = predRecord.rating ?? unitRecord.rating ?? '--';
             // Grab the pre-calculated Elo straight from predictions or unitRecord
             const compositeScore = predRecord.simulated_elo ?? unitRecord.simulated_elo ?? 0;
 
@@ -575,10 +745,12 @@ document.getElementById('odds-elo-rating').innerText = compositeScore;
                     <span class="font-bold text-emerald-400">Active Metric</span>
                 </div>
                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                    <span class="text-slate-300">Accuracy (${(unitRecord.accuracy * 1000).toFixed(0)})</span>
+                    <span class="text-slate-300">Accuracy (${(unitRecord.accuracy * 100).toFixed(0)}%)</span>
                     <span class="font-bold text-blue-400">Active Factor</span>
                 </div>
             `;
+
+            renderOddsHistogram();
         }
 
         function openDataModal() { document.getElementById('data-modal').classList.remove('hidden'); }
