@@ -201,7 +201,7 @@
             <div class="bg-fe-card p-6 rounded-2xl border border-fe-border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-white">Tournament Odds & Win Probability Engine</h2>
-                    <p class="text-sm text-fe-textMuted mt-1">Model-based championship forecasts, rescaled through the full tournament path: 3 qualifier rounds, top-24 seeding, and the double-elimination finale.</p>
+                    <p class="text-sm text-fe-textMuted mt-1">Model-based championship forecasts, rescaled through the full tournament path: 3 qualifier rounds, top-24 seeding, and a single-elimination finale (best of 3 per bout).</p>
                 </div>
                 <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:w-auto">
                     <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -357,6 +357,7 @@
     <script>
         let tournamentData = [];
         let predictionsData = {};
+        let unitData = [];
         let stageMeta = [];
         let scatterChartInstance = null;
         let oddsHistogramInstance = null;
@@ -423,25 +424,58 @@
                         raw_score: item.raw_score || 0,
                         softmax_win_prob: item.softmax_win_prob,
                         logistic_win_prob: item.logistic_win_prob,
-                        simulated_elo: item.simulated_elo || 0
+                        simulated_elo: item.simulated_elo || 0,
+                        kills: item.Kills || 0,
+                        deaths: item.Death || 0,
+                        crits: item.Crit || 0,
+                        hits: item.Hit || 0,
+                        evaded: item.Evaded || 0,
+                        attacksMade: item.total_attacks_made || 0,
+                        attacksAgainst: item.total_attacks_against || 0
                     }));
+                    buildUnitData();
+                } else {
+                    unitData = tournamentData;
                 }
 
-                // Map predictions structure indexed by Unit name for fast lookup in Tab 3
+                // Map predictions structure indexed by Unit name for fast lookup in Tab 3.
+                // Multiple rounds per unit are averaged (per-match probabilities) and the
+                // highest round's simulated Elo is kept for the Elo model.
                 if (jsonData && jsonData.predictions && jsonData.predictions.Unit) {
                     predictionsData = {};
                     const units = jsonData.predictions.Unit;
                     units.forEach((unitName, idx) => {
-                        predictionsData[unitName] = {
-                            kdr: jsonData.predictions.kdr[idx],
-                            accuracy: jsonData.predictions.accuracy[idx],
-                            crit_ratio: jsonData.predictions.crit_ratio[idx],
-                            dodge_ratio: jsonData.predictions.dodge_ratio[idx],
-                            rating: jsonData.predictions.Rating[idx],
-                            softmax_win_prob: jsonData.predictions.softmax_win_prob[idx],
-                            logistic_win_prob: jsonData.predictions.logistic_win_prob[idx],
-                            simulated_elo: jsonData.predictions.simulated_elo[idx]
-                        };
+                        if (!predictionsData[unitName]) {
+                            predictionsData[unitName] = {
+                                kdr: 0,
+                                accuracy: 0,
+                                crit_ratio: 0,
+                                dodge_ratio: 0,
+                                rating: jsonData.predictions.Rating[idx],
+                                softmax_win_prob: 0,
+                                logistic_win_prob: 0,
+                                simulated_elo: 0,
+                                count: 0
+                            };
+                        }
+                        const agg = predictionsData[unitName];
+                        agg.kdr += jsonData.predictions.kdr[idx];
+                        agg.accuracy += jsonData.predictions.accuracy[idx];
+                        agg.crit_ratio += jsonData.predictions.crit_ratio[idx];
+                        agg.dodge_ratio += jsonData.predictions.dodge_ratio[idx];
+                        agg.softmax_win_prob += jsonData.predictions.softmax_win_prob[idx];
+                        agg.logistic_win_prob += jsonData.predictions.logistic_win_prob[idx];
+                        agg.simulated_elo = Math.max(agg.simulated_elo, jsonData.predictions.simulated_elo[idx] || 0);
+                        agg.count += 1;
+                    });
+                    Object.values(predictionsData).forEach(agg => {
+                        agg.kdr /= agg.count;
+                        agg.accuracy /= agg.count;
+                        agg.crit_ratio /= agg.count;
+                        agg.dodge_ratio /= agg.count;
+                        agg.softmax_win_prob /= agg.count;
+                        agg.logistic_win_prob /= agg.count;
+                        delete agg.count;
                     });
                 }
 
@@ -453,11 +487,53 @@
             }
         }
 
+        function buildUnitData() {
+            // Aggregate per-round scatter rows into one record per unit per stage
+            const map = {};
+            tournamentData.forEach(d => {
+                const key = `${d.stage}|${d.name}`;
+                if (!map[key]) {
+                    map[key] = {
+                        name: d.name, class: d.class, stage: d.stage,
+                        kills: 0, deaths: 0, crits: 0, hits: 0, evaded: 0,
+                        attacksMade: 0, attacksAgainst: 0, wins: 0,
+                        raw_score: 0, simulated_elo: 0, rating: d.rating
+                    };
+                }
+                const u = map[key];
+                u.kills += d.kills; u.deaths += d.deaths; u.crits += d.crits;
+                u.hits += d.hits; u.evaded += d.evaded;
+                u.attacksMade += d.attacksMade; u.attacksAgainst += d.attacksAgainst;
+                u.wins += d.wins;
+                u.raw_score += d.raw_score || 0;
+                u.simulated_elo = Math.max(u.simulated_elo, d.simulated_elo || 0);
+            });
+            unitData = Object.values(map).map(u => ({
+                name: u.name, class: u.class, stage: u.stage,
+                battles: u.attacksMade + u.attacksAgainst,
+                kills: u.kills, deaths: u.deaths, crits: u.crits,
+                wins: u.wins, rating: u.rating, raw_score: u.raw_score,
+                simulated_elo: u.simulated_elo,
+                kdr: u.deaths > 0 ? u.kills / u.deaths : u.kills,
+                dodge: u.attacksAgainst > 0 ? (u.evaded / u.attacksAgainst) * 100 : 0,
+                crit: u.attacksMade > 0 ? (u.crits / u.attacksMade) * 100 : 0,
+                accuracy: u.attacksMade > 0 ? u.hits / u.attacksMade : 0
+            }));
+        }
+
         function renderPerformers() {
             const stage = document.getElementById('stage-select').value;
-            const filtered = tournamentData.filter(d => d.stage === stage);
-            
-            filtered.sort((a, b) => (b.raw_score ?? b.kdr) - (a.raw_score ?? a.kdr));
+            const filtered = unitData.filter(d => d.stage === stage);
+
+            // Qualification standing: wins, then kills, fewer deaths, crits, Elo
+            filtered.sort((a, b) =>
+                (b.wins - a.wins) ||
+                (b.kills - a.kills) ||
+                (a.deaths - b.deaths) ||
+                (b.crits - a.crits) ||
+                (b.simulated_elo - a.simulated_elo) ||
+                (b.raw_score - a.raw_score)
+            );
             const top3 = filtered.slice(0, 3);
 
             const container = document.getElementById('performers-container');
@@ -604,7 +680,7 @@
         }
 
         function populateUnitDropdowns() {
-            const unitNames = [...new Set(tournamentData.map(d => d.name))];
+            const unitNames = unitData.map(d => d.name);
             const selectEl = document.getElementById('odds-unit-select');
             selectEl.innerHTML = '';
             unitNames.forEach(name => {
@@ -631,6 +707,8 @@
             qualifyRounds: 3,          // qualifier team-match rounds, one match per unit per round
             qualifyWinsNeeded: 2,      // top 24 of 48 average out to needing >= 2 wins in 3 rounds
             roundsToFinal12: 3,        // round wins required to reach the final 12
+            final12: 12,               // teams in the finale bracket
+            finalsFormat: 'single_elim', // single elimination, best of 3 per bout (no loser's bracket)
             eloK: 400                  // Elo scaling constant for match expectancy
         };
 
@@ -654,7 +732,7 @@
             if (selectedModel === 'softmax') return (predRecord.softmax_win_prob ?? 0) / 100;
             if (selectedModel === 'logistic') return (predRecord.logistic_win_prob ?? 0) / 100;
             if (selectedModel === 'elo') {
-                const elos = tournamentData.map(d => d.simulated_elo || 0);
+                const elos = unitData.map(d => d.simulated_elo || 0);
                 const myElo = predRecord.simulated_elo ?? unitRecord.simulated_elo ?? 0;
                 if (!elos.length) return 0.5;
                 return elos.reduce((acc, other) => acc + (1 / (1 + Math.pow(10, (other - myElo) / TOURNAMENT_CONFIG.eloK))), 0) / elos.length;
@@ -664,17 +742,18 @@
 
         function computeChampionshipBreakdown(unitRecord, predRecord, selectedModel) {
             const p = clamp01(getMatchProb(unitRecord, predRecord, selectedModel));
-            let p2sum = 0;
-            [...new Set(tournamentData.map(d => d.name))].forEach(name => {
-                const u = tournamentData.find(d => d.name === name);
-                if (!u) return;
-                p2sum += Math.pow(clamp01(getMatchProb(u, predictionsData[name] || {}, selectedModel)), 2);
+            // Single-elimination finale: a champion must win log2(final12) bouts
+            // in a row (with best-of-3 bouts, p is the per-bout win probability).
+            const finaleRounds = Math.log2(TOURNAMENT_CONFIG.final12 || 2);
+            let pFinaleSum = 0;
+            unitData.forEach(u => {
+                pFinaleSum += Math.pow(clamp01(getMatchProb(u, predictionsData[u.name] || {}, selectedModel)), finaleRounds);
             });
 
-            const pQualify = p * p * (3 - 2 * p);                     // >= 2 wins out of 3 rounds (top 24 of 48)
-            const pReach12 = Math.pow(p, TOURNAMENT_CONFIG.roundsToFinal12); // 3 round wins to the final 12
-            const deShare = p2sum > 0 ? (p * p) / p2sum : 0;         // squared-strength share of the double-elim finale
-            return { p, pQualify, pReach12, deShare, champ: pQualify * pReach12 * deShare };
+            const pQualify = p * p * (3 - 2 * p);                                     // >= 2 wins out of 3 rounds (top 24 of 48)
+            const pReach12 = Math.pow(p, TOURNAMENT_CONFIG.roundsToFinal12);          // 3 round wins to the final 12
+            const seShare = pFinaleSum > 0 ? Math.pow(p, finaleRounds) / pFinaleSum : 0; // single-elim bracket share of the finale
+            return { p, pQualify, pReach12, seShare, champ: pQualify * pReach12 * seShare };
         }
 
         function computeModelWinProb(unitRecord, predRecord, selectedModel) {
@@ -682,7 +761,7 @@
         }
 
         function getUnitWinProb(unitName, model) {
-            const unitRecord = tournamentData.find(d => d.name === unitName);
+            const unitRecord = unitData.find(d => d.name === unitName);
             const predRecord = predictionsData[unitName] || {};
             if (!unitRecord) return -1;
             return computeModelWinProb(unitRecord, predRecord, model);
@@ -703,7 +782,8 @@
 
         function renderOddsHistogram() {
             const model = document.getElementById('odds-model-select').value;
-            const items = [...new Set(tournamentData.map(d => d.name))]
+            const items = unitData
+                .map(d => d.name)
                 .map(name => ({ name, prob: getUnitWinProb(name, model) }))
                 .filter(it => it.prob >= 0);
 
@@ -793,9 +873,9 @@
 
         function renderOdds() {
             sortUnitDropdown();
-            const unitName = document.getElementById('odds-unit-select').value || tournamentData[0]?.name;
+            const unitName = document.getElementById('odds-unit-select').value || unitData[0]?.name;
             const selectedModel = document.getElementById('odds-model-select').value; 
-            const unitRecord = tournamentData.find(d => d.name === unitName);
+            const unitRecord = unitData.find(d => d.name === unitName);
             const predRecord = predictionsData[unitName] || {};
             if (!unitRecord) return;
 
@@ -804,8 +884,8 @@
             const displayProb = isNaN(breakdown.champ) ? 0 : breakdown.champ * 100;
 
             // Rank the unit under the active prediction model
-            const rankedUnits = [...new Set(tournamentData.map(d => d.name))]
-                .map(name => ({ name, prob: getUnitWinProb(name, selectedModel) }))
+            const rankedUnits = unitData
+                .map(u => ({ name: u.name, prob: getUnitWinProb(u.name, selectedModel) }))
                 .filter(r => r.prob >= 0)
                 .sort((a, b) => b.prob - a.prob);
             const modelRank = rankedUnits.findIndex(r => r.name === unitName) + 1 || '--';
@@ -836,8 +916,8 @@ document.getElementById('odds-elo-rating').innerText = compositeScore;
                     <span class="font-bold text-amber-400">${(breakdown.pReach12 * 100).toFixed(1)}%</span>
                 </div>
                 <div class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
-                    <span class="text-slate-300">Double-Elim Championship Share</span>
-                    <span class="font-bold text-slate-200">${(breakdown.deShare * 100).toFixed(1)}%</span>
+                    <span class="text-slate-300">Single-Elim Bracket Share (Final ${TOURNAMENT_CONFIG.final12})</span>
+                    <span class="font-bold text-slate-200">${(breakdown.seShare * 100).toFixed(1)}%</span>
                 </div>
             `;
 
